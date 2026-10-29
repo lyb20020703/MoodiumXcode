@@ -1,16 +1,164 @@
 // !$*UTF8*$!
-{ archiveVersion = 1; classes = {}; objectVersion = 77; objects = {
-A00000000000000000000001 = {isa = PBXProject; attributes = {LastUpgradeCheck = 1630;}; buildConfigurationList = A00000000000000000000008; compatibilityVersion = "Xcode 16.0"; mainGroup = A00000000000000000000002; productRefGroup = A00000000000000000000003; targets = (A00000000000000000000005,); };
-A00000000000000000000002 = {isa = PBXGroup; children = (A00000000000000000000004,A00000000000000000000003,); sourceTree = "<group>"; };
-A00000000000000000000003 = {isa = PBXGroup; children = (A00000000000000000000006,); name = Products; sourceTree = "<group>"; };
-A00000000000000000000004 = {isa = PBXFileSystemSynchronizedRootGroup; path = Moodium; sourceTree = "<group>"; };
-A00000000000000000000005 = {isa = PBXNativeTarget; buildConfigurationList = A00000000000000000000009; buildPhases = (A00000000000000000000010,A00000000000000000000011,A00000000000000000000012,); fileSystemSynchronizedGroups = (A00000000000000000000004,); name = Moodium; productName = Moodium; productReference = A00000000000000000000006; productType = "com.apple.product-type.application"; };
-A00000000000000000000006 = {isa = PBXFileReference; explicitFileType = wrapper.application; path = Moodium.app; sourceTree = BUILT_PRODUCTS_DIR; };
-A00000000000000000000008 = {isa = XCConfigurationList; buildConfigurations = (A00000000000000000000013,); defaultConfigurationIsVisible = 0; defaultConfigurationName = Debug; };
-A00000000000000000000009 = {isa = XCConfigurationList; buildConfigurations = (A00000000000000000000014,); defaultConfigurationIsVisible = 0; defaultConfigurationName = Debug; };
-A00000000000000000000010 = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
-A00000000000000000000011 = {isa = PBXFrameworksBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
-A00000000000000000000012 = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
-A00000000000000000000013 = {isa = XCBuildConfiguration; name = Debug; buildSettings = {SDKROOT = iphoneos; IPHONEOS_DEPLOYMENT_TARGET = 17.0; SWIFT_VERSION = 5.0; }; };
-A00000000000000000000014 = {isa = XCBuildConfiguration; name = Debug; buildSettings = {PRODUCT_BUNDLE_IDENTIFIER = com.moodium.pocket; PRODUCT_NAME = "$(TARGET_NAME)"; GENERATE_INFOPLIST_FILE = YES; INFOPLIST_KEY_NSMotionUsageDescription = "通过手机运动感应感官底座的轻压摆动"; INFOPLIST_KEY_UILaunchScreen_Generation = YES; INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES; INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait; TARGETED_DEVICE_FAMILY = 1; SWIFT_VERSION = 5.0; IPHONEOS_DEPLOYMENT_TARGET = 17.0; CODE_SIGN_STYLE = Automatic; }; };
-}; rootObject = A00000000000000000000001; }
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 71;
+	objects = {
+
+/* Begin PBXFileReference section */
+		A00000000000000000000006 /* Moodium.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; path = Moodium.app; sourceTree = BUILT_PRODUCTS_DIR; };
+/* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedRootGroup section */
+		A00000000000000000000004 /* Moodium */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = Moodium; sourceTree = "<group>"; };
+/* End PBXFileSystemSynchronizedRootGroup section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		A00000000000000000000011 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		A00000000000000000000002 = {
+			isa = PBXGroup;
+			children = (
+				A00000000000000000000004 /* Moodium */,
+				A00000000000000000000003 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		A00000000000000000000003 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				A00000000000000000000006 /* Moodium.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		A00000000000000000000005 /* Moodium */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = A00000000000000000000009 /* Build configuration list for PBXNativeTarget "Moodium" */;
+			buildPhases = (
+				A00000000000000000000010 /* Sources */,
+				A00000000000000000000011 /* Frameworks */,
+				A00000000000000000000012 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				A00000000000000000000004 /* Moodium */,
+			);
+			name = Moodium;
+			productName = Moodium;
+			productReference = A00000000000000000000006 /* Moodium.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		A00000000000000000000001 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				LastUpgradeCheck = 1630;
+			};
+			buildConfigurationList = A00000000000000000000008 /* Build configuration list for PBXProject "Moodium" */;
+			compatibilityVersion = "Xcode 16.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = A00000000000000000000002;
+			productRefGroup = A00000000000000000000003 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				A00000000000000000000005 /* Moodium */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		A00000000000000000000012 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		A00000000000000000000010 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		A00000000000000000000013 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		A00000000000000000000014 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSMotionUsageDescription = "通过手机运动感应感官底座的轻压摆动";
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UIRequiresFullScreen = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.moodium.pocket;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		A00000000000000000000008 /* Build configuration list for PBXProject "Moodium" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A00000000000000000000013 /* Debug */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		A00000000000000000000009 /* Build configuration list for PBXNativeTarget "Moodium" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A00000000000000000000014 /* Debug */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = A00000000000000000000001 /* Project object */;
+}
