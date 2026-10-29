@@ -43,7 +43,7 @@ struct Home: View {
                 if stage == 0 {
                     VStack(spacing: 24) {
                         Text("MOODIUM").font(.system(size: 34, weight: .light, design: .rounded)).tracking(8)
-                        VideoPlayer(player: player).frame(height: geo.size.height * 0.55).clipShape(RoundedRectangle(cornerRadius: 32))
+                        TransparentVideoView(player: player).frame(height: geo.size.height * 0.55)
                         Text("把一点柔软，带回日常").foregroundStyle(.white.opacity(0.65))
                         Button("进入我的小世界  →") { player.pause(); withAnimation { stage = 1 } }.buttonStyle(.borderedProminent).tint(.purple)
                     }.padding(24).onAppear { player.play() }
