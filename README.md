@@ -53,3 +53,8 @@
 - 字体：Unity 里的阿里巴巴普惠体只有 TextMeshPro SDF 图集，没有 TTF，这里用系统圆体代替；有 TTF 后放进工程并改 `Font.moodium` 即可。
 - Unity 的软体变形、Shader（如果冻材质）无法直接迁移，枕头的形变是缩放弹簧近似。
 - Moodi 用的是 2D 表情图做动画，没有导入骨骼动画模型。
+
+## 3D Moodi 挤出救援
+已接入 Moodi.usdz、CandySoft_Mouth / NatureSoft_Mouth 及对应骨骼 JSON；旧软垫与 2D Moodi 保留回退。启动参数 `-MoodiSprite YES` 可强制对比旧流程。
+新流程包括飞入、掉入洞口、小芽求救、随能量渐进挤出、快眨、洞口收拢与跳出、再救一次。软垫倾斜 38°，按压缩放幅度为旧版 0.6；语音 RMS 驱动求救动作，静音时使用周期摆动。传感器、能量公式和礼物阈值未修改。
+验证：iOS 模拟器编译；包内 Mac SceneKit 预览工具校验模型与动画。真机完整流程、后台恢复、iPad 布局和 GPU/内存性能仍需实测，不能以编译成功替代。

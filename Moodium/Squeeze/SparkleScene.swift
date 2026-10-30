@@ -29,6 +29,9 @@ final class SparkleScene: SKScene, SKPhysicsContactDelegate {
     private var gravity = CGVector(dx: 0, dy: -1)
 
     /// Pillow rect in SpriteKit coordinates (origin bottom-left).
+    var spriteMoodi = true
+    private var mouthPoint: CGPoint?
+    func setMouthPoint(_ point: CGPoint?) { mouthPoint = point.map { toScene($0) } }
     private(set) var jellyRect = CGRect(x: 300, y: 60, width: 260, height: 170)
     private var moodiInside = false
 
@@ -103,7 +106,7 @@ final class SparkleScene: SKScene, SKPhysicsContactDelegate {
 
     func burst(intensity: Double, side: Double) {
         let i = CGFloat(intensity)
-        let origin = CGPoint(x: jellyRect.midX + CGFloat(side) * jellyRect.width * 0.18, y: jellyRect.maxY - jellyRect.height * 0.12)
+        let origin = mouthPoint ?? CGPoint(x: jellyRect.midX + CGFloat(side) * jellyRect.width * 0.18, y: jellyRect.maxY - jellyRect.height * 0.12)
 
         // Ring shock + glow flash
         flash(at: origin, texture: "fx_ring", from: 0.15, to: 0.8 + 0.6 * i, duration: 0.45, alpha: 0.85, color: accent)
@@ -152,7 +155,7 @@ final class SparkleScene: SKScene, SKPhysicsContactDelegate {
 
     /// A gift milestone (20 / 50 / 80 %): a bigger double ring and a shower of stars.
     func giftBurst() {
-        let origin = CGPoint(x: jellyRect.midX, y: jellyRect.maxY)
+        let origin = mouthPoint ?? CGPoint(x: jellyRect.midX, y: jellyRect.maxY)
         flash(at: origin, texture: "fx_splash", from: 0.3, to: 2.2, duration: 0.7, alpha: 0.9, color: accent)
         run(.wait(forDuration: 0.12)) { [weak self] in
             guard let self else { return }
@@ -187,7 +190,7 @@ final class SparkleScene: SKScene, SKPhysicsContactDelegate {
                 self.spawnMote(at: p, velocity: CGVector(dx: CGFloat.random(in: -120...120), dy: CGFloat.random(in: -200 ... -40)))
             }
         }
-        let ring = CGPoint(x: jellyRect.midX, y: jellyRect.midY)
+        let ring = mouthPoint ?? CGPoint(x: jellyRect.midX, y: jellyRect.midY)
         flash(at: ring, texture: "fx_ring", from: 0.2, to: 4, duration: 0.9, alpha: 0.9, color: accent)
         flash(at: ring, texture: "fx_glow", from: 0.5, to: 5, duration: 0.8, alpha: 0.9, color: .white)
     }
@@ -432,6 +435,7 @@ final class SparkleScene: SKScene, SKPhysicsContactDelegate {
     /// Moodi flies in, waves above the pillow, slips and sinks into it.
     /// `onSplash` fires when Moodi lands in the jelly.
     func moodiFallIn(onSplash: @escaping () -> Void) {
+        guard spriteMoodi else { return }
         moodi.removeAllActions()
         moodiShadow.removeAllActions()
         moodiInside = false
@@ -487,6 +491,7 @@ final class SparkleScene: SKScene, SKPhysicsContactDelegate {
 
     /// Moodi gets clearer and happier as the energy rises.
     func moodiReact(energy e: Double, intensity: Double) {
+        guard spriteMoodi else { return }
         guard moodiInside else { return }
         let face = e < 0.5 ? "moodi_tense" : (e < 0.8 ? "moodi_neutral" : "moodi_happy")
         moodi.texture = Self.tex(face)
@@ -502,6 +507,7 @@ final class SparkleScene: SKScene, SKPhysicsContactDelegate {
 
     /// The pillow pops and Moodi jumps out, spins and floats in front of you.
     func moodiPopOut() {
+        guard spriteMoodi else { return }
         moodi.removeAction(forKey: "idle")
         moodiInside = false
         moodi.texture = Self.tex("moodi_happy")
@@ -525,16 +531,17 @@ final class SparkleScene: SKScene, SKPhysicsContactDelegate {
 
     /// Moodi floats away (before a replay or on exit).
     func moodiLeave() {
+        guard spriteMoodi else { return }
         moodi.removeAllActions()
         moodiInside = false
         moodi.run(.group([.moveBy(x: 0, y: 160, duration: 0.5), .fadeOut(withDuration: 0.4)]))
         moodiShadow.run(.fadeOut(withDuration: 0.3))
     }
 
-    private func splash(at p: CGPoint) {
+    func splash(at p: CGPoint) {
         flash(at: p, texture: "fx_splash", from: 0.2, to: 1.4, duration: 0.5, alpha: 0.9, color: accent)
         let drops = emitter(world == .candy ? "fx_sugar" : "fx_seed", count: 16)
-        drops.position = CGPoint(x: p.x, y: jellyRect.maxY)
+        drops.position = p
         drops.emissionAngle = .pi / 2
         drops.emissionAngleRange = .pi * 0.8
         drops.particleSpeed = 300

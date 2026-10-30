@@ -34,10 +34,13 @@ final class SqueezeDirector: ObservableObject {
     private var lastEncourage = Date.distantPast
     private var lastNudge = Date.distantPast
     private var pending: [DispatchWorkItem] = []
+    private var voiceTimer: Timer?
     private var idleTimer: Timer?
     private var touchStart: Date?
     private var holdTimer: Timer?
     private var running = false
+    private var introStarted = false
+    private var popped = false
 
     init(world: MoodWorld) {
         self.world = world
@@ -51,6 +54,11 @@ final class SqueezeDirector: ObservableObject {
             self.haptics.edge(strength)
             self.audio.sfx("sfx_bounce", volume: Float(0.12 + 0.3 * strength))
         }
+        stage.onReady = { [weak self] in
+            guard let self, self.running, !self.introStarted else { return }
+            self.runIntro()
+        }
+        stage.onPop = { [weak self] in self?.meshPop() }
         sensor.onPulse = { [weak self] pulse in self?.squeeze(intensity: pulse.intensity, side: pulse.side) }
         sensor.onMotion = { [weak self] gravity, _ in self?.applyMotion(gravity) }
         sensor.onShake = { [weak self] in
@@ -81,20 +89,35 @@ final class SqueezeDirector: ObservableObject {
         audio.playMusic(world.bgm)
         haptics.prepare()
         sensor.start()
-        idleTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
-            MainActor.assumeIsolated { self?.checkIdle() }
+        voiceTimer = Timer.scheduledTimer(withTimeInterval: 1.0 / 30, repeats: true) { [weak self] _ in
+            MainActor.assumeIsolated {
+                guard let self else { return }
+                let fallback = Float(0.6 + 0.4 * abs(sin(Date.timeIntervalSinceReferenceDate * 7 * 2 * .pi)))
+                let level = self.audio.isSpeaking ? (self.audio.voiceLevel > 0.01 ? self.audio.voiceLevel : fallback) : 0
+                self.stage.withRescue { $0.talk = level }
+            }
         }
-        after(0.6) { [weak self] in self?.runIntro() }
+        idleTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
+            MainActor.assumeIsolated {
+                self?.checkIdle()
+                guard let self else { return }
+                self.stage.withRescue { $0.talk = self.audio.isSpeaking ? max(0.6, self.audio.voiceLevel) : 0 }
+            }
+        }
+        after(0.6) { [weak self] in guard let self, self.stage.modelsReady, !self.introStarted else { return }; self.runIntro() }
     }
 
     func stop() {
         running = false
         cancelPending()
         idleTimer?.invalidate()
+        voiceTimer?.invalidate()
         holdTimer?.invalidate()
         sensor.stop()
         audio.stopVoice()
         audio.stopMusic()
+        stage.withRescue { $0.reset() }
+        introStarted = false
     }
 
     func pause() {
@@ -113,19 +136,25 @@ final class SqueezeDirector: ObservableObject {
     /// The pillow's screen rect changed (layout or rotation).
     func layoutChanged() {
         if let rect = stage.jellyScreenRect() { sparkles.setJellyRect(rect) }
+        sparkles.spriteMoodi = !stage.usesMeshMoodi
+        sparkles.setMouthPoint(stage.mouthScreenPoint())
     }
 
     // MARK: - Story
 
     private func runIntro() {
+        introStarted = true
+        popped = false
         phase = .intro
         acceptingSqueezes = false
         showHint = false
         layoutChanged()
         audio.sfx("sfx_hop", volume: 0.5)
-        sparkles.moodiFallIn { [weak self] in
+        let splash: () -> Void = { [weak self] in
             guard let self else { return }
             // K1 just before the splash, then the pillow swallows Moodi.
+            if let point = self.stage.mouthScreenPoint() { self.sparkles.splash(at: self.sparkles.toScene(point)) }
+            self.stage.withRescue { $0.setPeeking(true) }
             self.stage.kick(0.9, side: 0)
             self.audio.sfx("sfx_squish", volume: 0.6)
             self.haptics.squeeze(0.8)
@@ -143,6 +172,8 @@ final class SqueezeDirector: ObservableObject {
                 }
             }
         }
+        if stage.usesMeshMoodi { stage.onSplash = splash; stage.rescueFallIn() }
+        else { sparkles.moodiFallIn(onSplash: splash) }
         after(1.75) { [weak self] in self?.say("K1", clarity: 1) }
     }
 
@@ -171,7 +202,13 @@ final class SqueezeDirector: ObservableObject {
         let before = energy
         energy = min(1, energy + 0.024 + 0.03 * intensity)
         sparkles.setEnergy(energy)
-        sparkles.moodiReact(energy: energy, intensity: intensity)
+        if stage.usesMeshMoodi {
+            stage.withRescue {
+                $0.squeeze(intensity: Float(intensity)); $0.setProgress(Float(energy))
+                if [1,5,10,15].contains(squeezes) { $0.blink(delay: 0.1) }
+                if before < 0.2 && energy >= 0.2 { $0.blink(count: 2, delay: 0.15) }
+            }
+        } else { sparkles.moodiReact(energy: energy, intensity: intensity) }
 
         if squeezes >= 3, showHint { withAnimation(.easeOut(duration: 0.5)) { showHint = false } }
 
@@ -196,6 +233,10 @@ final class SqueezeDirector: ObservableObject {
         acceptingSqueezes = false
         withAnimation { showHint = false }
         haptics.success()
+        if stage.usesMeshMoodi {
+            after(1.2) { [weak self] in self?.stage.withRescue { $0.forcePop() } }
+            return
+        }
         stage.popJelly()
         after(0.55) { [weak self] in
             guard let self else { return }
@@ -208,6 +249,14 @@ final class SqueezeDirector: ObservableObject {
         after(3.6) { [weak self] in withAnimation(.spring(response: 0.5, dampingFraction: 0.85)) { self?.showCard = true } }
     }
 
+    private func meshPop() {
+        guard running, phase == .complete, !popped else { return }
+        popped = true
+        stage.burst(1, side: 0); stage.burst(1, side: 0)
+        sparkles.celebrate(); audio.sfx("sfx_complete", volume: 0.7); stage.rain(duration: 2.6)
+        after(0.55) { [weak self] in self?.say("K10", clarity: 1) }
+        after(3.05) { [weak self] in withAnimation { self?.showCard = true } }
+    }
     func replay() {
         withAnimation(.easeOut(duration: 0.25)) { showCard = false }
         cancelPending()
@@ -217,7 +266,7 @@ final class SqueezeDirector: ObservableObject {
         sparkles.setEnergy(0)
         sparkles.moodiLeave()
         stage.clearProps()
-        stage.regrowJelly()
+        if stage.usesMeshMoodi { stage.withRescue { $0.leave() } } else { stage.regrowJelly() }
         after(0.7) { [weak self] in self?.runIntro() }
     }
 
@@ -234,6 +283,7 @@ final class SqueezeDirector: ObservableObject {
 
     func touchBegan() {
         guard touchStart == nil, acceptingSqueezes else { return }
+        stage.withRescue { $0.setHeld(true) }
         touchStart = Date()
         holdTimer = Timer.scheduledTimer(withTimeInterval: 1.0 / 30, repeats: true) { [weak self] _ in
             MainActor.assumeIsolated {
@@ -248,6 +298,7 @@ final class SqueezeDirector: ObservableObject {
         touchStart = nil
         holdTimer?.invalidate()
         stage.setHold(0)
+        stage.withRescue { $0.setHeld(false) }
         let held = min(1, Date().timeIntervalSince(start) / 0.6)
         let side = width > 0 ? Double((x / width - 0.5) * 2) : 0
         squeeze(intensity: 0.35 + 0.65 * held, side: max(-1, min(1, side)))
@@ -272,6 +323,7 @@ final class SqueezeDirector: ObservableObject {
         let file = muffled ? "moodi_vo_\(id)_\(lang)_muffled" : "moodi_vo_\(id)_\(lang)"
         let c = clarity ?? (muffled ? 1 : 0.15 + 0.85 * energy)
         let duration = audio.voice(file, clarity: c, completion: completion)
+        stage.withRescue { $0.talk = audio.isSpeaking ? max(0.6, audio.voiceLevel) : 0 }
         let text = VoiceLines.text(id, language)
         withAnimation(.easeOut(duration: 0.2)) { subtitle = text }
         after(max(1.4, duration + 0.5)) { [weak self] in

@@ -28,6 +28,24 @@ final class SoftStage: NSObject, SCNSceneRendererDelegate, SCNPhysicsContactDele
 
     private let jellyRoot = SCNNode()    // placement + entrance/exit actions
     private let jellySpring = SCNNode()  // per-frame squash & lean
+    private let jellyTilt = SCNNode()
+    private(set) var rescue: MoodiRescueRig?
+    var usesMeshMoodi: Bool { rescue != nil }
+    var onSplash: (() -> Void)?
+    var onPop: (() -> Void)?
+    var onFree: (() -> Void)?
+    private(set) var modelsReady = false
+    var onReady: (() -> Void)?
+    private var layoutSize = CGSize.zero
+    func withRescue(_ action: (MoodiRescueRig) -> Void) { lock.lock(); defer { lock.unlock() }; if let rescue { action(rescue) } }
+    func rescueFallIn() {
+        withRescue { rig in rig.fallIn(from: rig.node.simdConvertPosition(SIMD3(halfW * 0.95, halfH * 1.05, 0), from: scene.rootNode)) }
+    }
+    func mouthScreenPoint() -> CGPoint? {
+        guard let rescue, let view else { return nil }
+        let p = view.projectPoint(rescue.node.convertPosition(SCNVector3Zero, to: nil))
+        return CGPoint(x: CGFloat(p.x), y: CGFloat(p.y))
+    }
     private let jellyFit = SCNNode()     // scales the unit-width model to the screen
     private let jellyBody = SCNNode()
     private let props = SCNNode()
@@ -93,7 +111,8 @@ final class SoftStage: NSObject, SCNSceneRendererDelegate, SCNPhysicsContactDele
         scene.physicsWorld.timeStep = 1.0 / 90
 
         jellyFit.addChildNode(SCNNode()) // placeholder until the model loads
-        jellySpring.addChildNode(jellyFit)
+        jellyTilt.addChildNode(jellyFit)
+        jellySpring.addChildNode(jellyTilt)
         jellyRoot.addChildNode(jellySpring)
         scene.rootNode.addChildNode(jellyRoot)
         scene.rootNode.addChildNode(jellyBody)
@@ -108,15 +127,35 @@ final class SoftStage: NSObject, SCNSceneRendererDelegate, SCNPhysicsContactDele
     private func loadModels() {
         let world = self.world
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            var rig: MoodiRescueRig?
+            if !UserDefaults.standard.bool(forKey: "MoodiSprite"),
+               let soft = Res.url(world.softModel + "_Mouth", "usdz"), let moodi = Res.url("Moodi", "usdz"),
+               let tracks = Res.url(world.softModel + "_MoodiTracks", "json") {
+                rig = MoodiRescueRig(softURL: soft, moodiURL: moodi, tracksURL: tracks)
+            }
+            let loadedRig = rig
             let jelly = ModelLoader.load(world.softModel, extent: 1, bottomPivot: true)
             let templates = SoftStage.makeTemplates(for: world)
             DispatchQueue.main.async {
                 guard let self else { return }
                 self.templates = templates
-                if let jelly {
+                if let rig = loadedRig {
+                    self.lock.lock()
+                    self.rescue = rig
+                    self.jellyFit.childNodes.forEach { $0.removeFromParentNode() }
+                    self.jellyFit.addChildNode(rig.node)
+                    rig.onSplash = { [weak self] in DispatchQueue.main.async { self?.onSplash?() } }
+                    rig.onPop = { [weak self] in DispatchQueue.main.async { self?.onPop?() } }
+                    rig.onFree = { [weak self] in DispatchQueue.main.async { self?.onFree?() } }
+                    self.lock.unlock()
+                } else if let jelly {
                     self.jellyFit.childNodes.forEach { $0.removeFromParentNode() }
                     self.jellyFit.addChildNode(jelly.node)
                 }
+                self.resize(self.layoutSize)
+                print("[Moodi Emergence] display = \(self.usesMeshMoodi ? "mesh" : "sprite")")
+                self.modelsReady = true
+                self.onReady?()
             }
         }
     }
@@ -161,6 +200,7 @@ final class SoftStage: NSObject, SCNSceneRendererDelegate, SCNPhysicsContactDele
     /// Fits the prop plane, walls and pillow to the view size.
     func resize(_ size: CGSize) {
         guard size.width > 0, size.height > 0 else { return }
+        layoutSize = size
         halfH = cameraDistance * tan(fov * .pi / 360)
         halfW = halfH * Float(size.width / size.height)
 
@@ -173,6 +213,21 @@ final class SoftStage: NSObject, SCNSceneRendererDelegate, SCNPhysicsContactDele
         jellyRoot.position = SCNVector3(0, jellyBottomY, jellyZ)
         jellyFit.scale = SCNVector3(jellyWidth, jellyWidth, jellyWidth)
 
+        if let rescue {
+            let b = rescue.softBounds
+            let k = min(2 * halfW * 0.52 * depthScale / (b.max.x - b.min.x), halfH * 1.8 / (b.max.y - b.min.y + 2.3))
+            jellyFit.simdScale = SIMD3(repeating: k)
+            let c = (b.min + b.max) / 2
+            jellyFit.simdPosition = -SIMD3(c.x, b.min.y, c.z) * k
+            jellyTilt.simdOrientation = simd_quatf(angle: 38 * .pi / 180, axis: SIMD3(1, 0, 0))
+            jellyRoot.simdPosition = SIMD3(0, -0.5 * halfH * depthScale, jellyZ)
+            if let rect = jellyScreenRect(), let view, view.bounds.height > 0 {
+                let unit = 2 * halfH / Float(view.bounds.height)
+                jellyWidth = Float(rect.width) * unit * depthScale
+                jellyHeight = Float(rect.height) * unit * depthScale
+                jellyBottomY = (halfH - Float(rect.maxY) * unit) * depthScale
+            }
+        }
         // Static collider for the pillow on the prop plane.
         let planeW = jellyWidth / depthScale * 0.86
         let planeH = jellyHeight / depthScale * 0.8
@@ -208,6 +263,12 @@ final class SoftStage: NSObject, SCNSceneRendererDelegate, SCNPhysicsContactDele
     /// Pillow geometry in UIKit points, for placing 2D effects and Moodi.
     func jellyScreenRect() -> CGRect? {
         guard let view else { return nil }
+        if let rescue {
+            let b = rescue.softBounds
+            let points = [b.min.x, b.max.x].flatMap { x in [b.min.y,b.max.y].flatMap { y in [b.min.z,b.max.z].map { z in view.projectPoint(rescue.node.convertPosition(SCNVector3(x,y,z), to: nil)) } } }
+            let xs = points.map { CGFloat($0.x) }, ys = points.map { CGFloat($0.y) }
+            return CGRect(x: xs.min()!, y: ys.min()!, width: xs.max()! - xs.min()!, height: ys.max()! - ys.min()!)
+        }
         let bl = view.projectPoint(SCNVector3(-jellyWidth / 2, jellyBottomY, jellyZ))
         let tr = view.projectPoint(SCNVector3(jellyWidth / 2, jellyBottomY + jellyHeight, jellyZ))
         return CGRect(x: CGFloat(bl.x), y: CGFloat(tr.y), width: CGFloat(tr.x - bl.x), height: CGFloat(bl.y - tr.y))
@@ -247,7 +308,9 @@ final class SoftStage: NSObject, SCNSceneRendererDelegate, SCNPhysicsContactDele
         for n in 0..<count {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.045 * Double(n)) { [weak self] in
                 guard let self else { return }
-                let x = Float.random(in: -0.32...0.32) * self.jellyWidth
+                let mouth = self.rescue?.node.convertPosition(SCNVector3Zero, to: nil)
+                let centerX = (mouth?.x ?? 0) * self.cameraDistance / (self.cameraDistance - (mouth?.z ?? 0))
+                let x = centerX + Float.random(in: -0.2...0.2) * self.jellyWidth
                 let y = self.jellyTopY + 0.35
                 let vx = -Float(side) * Float.random(in: 1.2...3.2) + Float.random(in: -1.8...1.8)
                 let vy = Float.random(in: 5.5...8.0) * Float(0.75 + 0.35 * intensity)
@@ -372,7 +435,8 @@ final class SoftStage: NSObject, SCNSceneRendererDelegate, SCNPhysicsContactDele
         leanVel += (-95 * lean - 6 * leanVel) * dt
         lean += leanVel * dt
         parallax += (parallaxTarget - parallax) * min(1, dt * 4)
-        let s = squash, l = lean, px = parallax
+        rescue?.update(dt: dt)
+        let s = squash * (rescue == nil ? 1 : 0.6), l = lean, px = parallax
         lock.unlock()
 
         jellySpring.scale = SCNVector3(1 + 0.42 * s, 1 - 0.5 * s, 1 + 0.3 * s)

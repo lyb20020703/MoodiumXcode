@@ -22,6 +22,8 @@ final class AudioDirector {
     private let filter = AVAudioUnitEQ(numberOfBands: 1)
     private var voiceFormat: AVAudioFormat?
     private var voiceToken = 0
+    private(set) var voiceLevel: Float = 0
+    private var hasTap = false
     private(set) var isSpeaking = false
 
     private init() {
@@ -101,6 +103,16 @@ final class AudioDirector {
             engine.disconnectNodeOutput(filter)
             engine.connect(voiceNode, to: filter, format: audio.processingFormat)
             engine.connect(filter, to: engine.mainMixerNode, format: audio.processingFormat)
+            if hasTap { filter.removeTap(onBus: 0) }
+            filter.installTap(onBus: 0, bufferSize: 1024, format: audio.processingFormat) { [weak self] buffer, _ in
+                guard let channel = buffer.floatChannelData?[0] else { return }
+                let n = Int(buffer.frameLength)
+                var sum: Float = 0
+                for i in 0..<n { sum += channel[i] * channel[i] }
+                let level = min(1, (sum / Float(max(1,n))).squareRoot() * 6)
+                DispatchQueue.main.async { guard let self else { return }; self.voiceLevel += (level - self.voiceLevel) * 0.5 }
+            }
+            hasTap = true
             voiceFormat = audio.processingFormat
         }
         let c = max(0, min(1, clarity))
@@ -125,6 +137,7 @@ final class AudioDirector {
     }
 
     func stopVoice() {
+        voiceLevel = 0
         voiceToken += 1
         voiceNode.stop()
         isSpeaking = false
