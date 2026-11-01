@@ -8,7 +8,7 @@ struct SettingsPanel: View {
 
     var body: some View {
         ZStack {
-            Palette.ink.opacity(0.18).ignoresSafeArea()
+            Color.black.opacity(0.35).ignoresSafeArea()
                 .onTapGesture { close() }
 
             VStack(alignment: .leading, spacing: 18) {
@@ -41,10 +41,10 @@ struct SettingsPanel: View {
                     .foregroundStyle(Palette.textMuted)
                     .fixedSize(horizontal: false, vertical: true)
             }
-            .foregroundStyle(Palette.ink)
+            .foregroundStyle(.white)
             .padding(24)
             .frame(width: 430)
-            .glass(RoundedRectangle(cornerRadius: 30, style: .continuous), tint: .white, amount: 0.35)
+            .glass(RoundedRectangle(cornerRadius: 30, style: .continuous), tint: Palette.smoke, amount: 0.6)
             .animation(.spring(response: 0.35, dampingFraction: 0.85), value: app.hasBase)
         }
     }
@@ -80,7 +80,7 @@ struct GlassSegmented<Value: Hashable>: View {
                     .background {
                         if selected {
                             Capsule().fill(.white)
-                                .shadow(color: Palette.shadow.opacity(0.2), radius: 5, y: 2)
+                                .shadow(color: .black.opacity(0.18), radius: 4, y: 2)
                                 .matchedGeometryEffect(id: "thumb", in: thumb)
                         }
                     }
@@ -93,7 +93,7 @@ struct GlassSegmented<Value: Hashable>: View {
             }
         }
         .padding(4)
-        .background(Capsule().fill(Palette.lilac.opacity(0.12)))
-        .overlay(Capsule().strokeBorder(.white.opacity(0.7), lineWidth: 1))
+        .background(Capsule().fill(.white.opacity(0.08)))
+        .overlay(Capsule().strokeBorder(.white.opacity(0.2), lineWidth: 1))
     }
 }

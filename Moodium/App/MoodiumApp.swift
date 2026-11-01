@@ -15,7 +15,7 @@ struct MoodiumApp: App {
         WindowGroup {
             RootView()
                 .environmentObject(app)
-                .preferredColorScheme(.light)
+                .preferredColorScheme(.dark)
                 .statusBarHidden(true)
                 .persistentSystemOverlays(.hidden)
         }

@@ -61,7 +61,7 @@ struct SqueezeView: View {
                 if showHelp { ModeHelpCard(world: world, touchMode: director.touchMode, isPresented: $showHelp).transition(.opacity) }
                 if showSettings { SettingsPanel(isPresented: $showSettings).transition(.opacity) }
             }
-            .foregroundStyle(Palette.ink)
+            .foregroundStyle(.white)
         }
         .onAppear {
             configureDirector()
@@ -207,7 +207,7 @@ struct SqueezeView: View {
         }
         .padding(.horizontal, 22).padding(.vertical, 14)
         .frame(width: 372)
-        .glass(RoundedRectangle(cornerRadius: 26, style: .continuous), tint: .white, amount: 0.35)
+        .glass(RoundedRectangle(cornerRadius: 26, style: .continuous), tint: Palette.smoke, amount: 0.55)
         // Top right, clear of Moodi in the middle and the dock below.
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
         .padding(.top, 64).padding(.trailing, 22)

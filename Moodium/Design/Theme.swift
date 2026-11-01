@@ -1,27 +1,14 @@
 import SwiftUI
 
-/// Soft lavender look: light gradient rooms, frosted white cards, deep plum text,
-/// pastel iridescent glows (pink → lilac → sky → mint).
+/// Colours from the visionOS UI refresh tokens (ui-refresh.tokens.json).
 enum Palette {
-    /// Primary text and dark pills.
-    static let ink = Color(hex: 0x2B2150)
-    /// Light panel tint (was the smoky purple of the dark theme).
-    static let smoke = Color(hex: 0xF3EEFC)
+    static let ink = Color(hex: 0x1E1A28)
+    static let smoke = Color(hex: 0x2B2238)
     static let candy = Color(hex: 0xF27DB6)
     static let nature = Color(hex: 0x55C47F)
     static let lavender = Color(hex: 0xB79CF2)
-    static let lilac = Color(hex: 0x9C82EE)
-    static let blush = Color(hex: 0xF7A8CF)
-    static let sky = Color(hex: 0x9CC7F5)
-    static let mint = Color(hex: 0x9BE3C7)
-    static let textMuted = Color(hex: 0x2B2150).opacity(0.58)
-    static let labelUnselected = Color(hex: 0x2B2150).opacity(0.62)
-    /// Room background, top to bottom.
-    static let roomTop = Color(hex: 0xF4EFFD)
-    static let roomMid = Color(hex: 0xE6DBF8)
-    static let roomBottom = Color(hex: 0xF8E9F3)
-    static let iridescent: [Color] = [Color(hex: 0xF7A8CF), Color(hex: 0xB79CF2), Color(hex: 0x9CC7F5), Color(hex: 0x9BE3C7), Color(hex: 0xF7A8CF)]
-    static let shadow = Color(hex: 0x6B4FC8)
+    static let textMuted = Color.white.opacity(0.74)
+    static let labelUnselected = Color.white.opacity(0.82)
 }
 
 extension Font {
@@ -31,9 +18,9 @@ extension Font {
     }
 }
 
-// MARK: - Frosted cards
+// MARK: - Liquid glass
 
-/// Frosted white card: blur, a milky white fill, a bright rim and a soft lilac shadow.
+/// The glass surface used across the visionOS UI: blur, a soft white sheen and a bright rim.
 struct GlassSurface: ViewModifier {
     var shape: AnyShape
     var tint: Color?
@@ -45,15 +32,16 @@ struct GlassSurface: ViewModifier {
             .background {
                 ZStack {
                     shape.fill(.ultraThinMaterial)
-                    shape.fill(.white.opacity(0.58))
+                    shape.fill(LinearGradient(colors: [.white.opacity(0.20), .white.opacity(0.04), .white.opacity(0.10)],
+                                              startPoint: .top, endPoint: .bottom))
                     if let tint { shape.fill(tint.opacity(tintAmount)) }
-                    shape.fill(LinearGradient(colors: [.white.opacity(0.55), .white.opacity(0)], startPoint: .top, endPoint: .center))
                 }
             }
             .overlay {
-                shape.stroke(LinearGradient(colors: [.white, .white.opacity(0.35)], startPoint: .top, endPoint: .bottom), lineWidth: 1)
+                shape.stroke(LinearGradient(colors: [.white.opacity(0.75), .white.opacity(0.12), .white.opacity(0.42)],
+                                            startPoint: .topLeading, endPoint: .bottomTrailing), lineWidth: 1)
             }
-            .shadow(color: Palette.shadow.opacity(shadow ? 0.16 : 0), radius: 18, y: 8)
+            .shadow(color: .black.opacity(shadow ? 0.28 : 0), radius: 14, y: 6)
     }
 }
 
@@ -63,7 +51,7 @@ extension View {
     }
 }
 
-/// Pill button. Prominent = filled with the tint (white text); plain = frosted white (plum text).
+/// Glass capsule button with a gentle press.
 struct GlassButtonStyle: ButtonStyle {
     var tint: Color? = nil
     var prominent = false
@@ -71,33 +59,22 @@ struct GlassButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .font(.moodium(17, .semibold))
-            .foregroundStyle(prominent ? .white : Palette.ink)
+            .foregroundStyle(.white)
             .padding(.horizontal, 22)
             .padding(.vertical, 12)
             .background {
-                if prominent {
-                    let c = tint ?? Palette.ink
-                    Capsule().fill(LinearGradient(colors: [c.opacity(0.95), c], startPoint: .top, endPoint: .bottom))
-                        .overlay(Capsule().fill(LinearGradient(colors: [.white.opacity(0.35), .clear], startPoint: .top, endPoint: .center)))
-                        .shadow(color: c.opacity(0.4), radius: 12, y: 6)
+                if prominent, let tint {
+                    Capsule().fill(LinearGradient(colors: [tint.opacity(0.95), tint.opacity(0.7)], startPoint: .top, endPoint: .bottom))
                 }
             }
-            .modifier(OptionalGlass(on: !prominent, tint: tint))
+            .glass(tint: prominent ? nil : tint, amount: 0.22)
             .scaleEffect(configuration.isPressed ? 0.95 : 1)
-            .brightness(configuration.isPressed ? -0.03 : 0)
+            .brightness(configuration.isPressed ? 0.08 : 0)
             .animation(.spring(response: 0.25, dampingFraction: 0.7), value: configuration.isPressed)
     }
 }
 
-private struct OptionalGlass: ViewModifier {
-    var on: Bool
-    var tint: Color?
-    func body(content: Content) -> some View {
-        if on { content.glass(tint: tint, amount: 0.12) } else { content }
-    }
-}
-
-/// Round frosted icon button (back, settings, sound).
+/// Round glass icon button (back, settings, sound).
 struct GlassIconButton: View {
     let symbol: String
     var size: CGFloat = 46
@@ -106,8 +83,8 @@ struct GlassIconButton: View {
     var body: some View {
         Button(action: action) {
             Image(systemName: symbol)
-                .font(.system(size: size * 0.36, weight: .semibold))
-                .foregroundStyle(Palette.ink)
+                .font(.system(size: size * 0.38, weight: .semibold))
+                .foregroundStyle(.white)
                 .frame(width: size, height: size)
         }
         .buttonStyle(IconPressStyle())
@@ -139,39 +116,35 @@ struct OpeningPill: View {
 private struct OpeningPillStyle: ButtonStyle {
     var highlighted: Bool
     func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .font(.moodium(20, .bold))
-            .foregroundStyle(highlighted ? .white : Palette.ink)
-            .frame(width: 168, height: 58)
-            .background {
-                if highlighted {
-                    Capsule().fill(LinearGradient(colors: [Palette.lilac, Color(hex: 0xC48BE8)], startPoint: .topLeading, endPoint: .bottomTrailing))
-                        .shadow(color: Palette.lilac.opacity(0.45), radius: 14, y: 6)
-                }
-            }
-            .glass(shadow: !highlighted)
-            .scaleEffect(configuration.isPressed ? 0.95 : 1)
-            .animation(.spring(response: 0.25, dampingFraction: 0.7), value: configuration.isPressed)
+        let sprite = configuration.isPressed ? "opening_btn_bg_pressed" : (highlighted ? "opening_btn_bg_gaze" : "opening_btn_bg_idle")
+        return ZStack {
+            Image(asset: sprite).resizable().interpolation(.high)
+            configuration.label
+                .font(.moodium(22, .bold))
+                .foregroundStyle(.white)
+                .shadow(color: .black.opacity(0.25), radius: 3, y: 1)
+                .offset(y: -2)
+        }
+        .frame(width: 200, height: 113)
+        .scaleEffect(configuration.isPressed ? 0.96 : 1)
+        .animation(.spring(response: 0.25, dampingFraction: 0.7), value: configuration.isPressed)
     }
 }
 
 // MARK: - Backdrop
 
-/// Light lavender room with slow pastel light pools drifting around.
+/// Dark smoky room with slow coloured light pools, like the visionOS preview boards.
 struct MoodBackdrop: View {
-    var colors: [Color] = [Palette.blush, Palette.lavender, Palette.sky]
+    var colors: [Color] = [Color(hex: 0x8E7B6A), Palette.lavender, Color(hex: 0x4E7A5A)]
 
     var body: some View {
         TimelineView(.animation(minimumInterval: 1.0 / 30)) { context in
             let t = context.date.timeIntervalSinceReferenceDate
             Canvas { ctx, size in
-                ctx.fill(Path(CGRect(origin: .zero, size: size)),
-                         with: .linearGradient(Gradient(colors: [Palette.roomTop, Palette.roomMid, Palette.roomBottom]),
-                                               startPoint: .zero, endPoint: CGPoint(x: size.width * 0.4, y: size.height)))
-                let anchors: [(CGFloat, CGFloat, CGFloat, Double)] = [(0.12, 0.22, 0.42, 0.55), (0.82, 0.78, 0.5, 0.45), (0.9, 0.12, 0.38, 0.4), (0.45, 0.95, 0.4, 0.35)]
-                let pool = colors + [Palette.mint]
-                for (i, a) in anchors.enumerated() {
-                    let color = pool[i % pool.count]
+                ctx.fill(Path(CGRect(origin: .zero, size: size)), with: .color(Palette.ink))
+                let anchors: [(CGFloat, CGFloat, CGFloat, Double)] = [(0.18, 0.28, 0.6, 0.22), (0.78, 0.72, 0.55, 0.18), (0.88, 0.2, 0.45, 0.14)]
+                for (i, color) in colors.enumerated() where i < anchors.count {
+                    let a = anchors[i]
                     let x = size.width * (a.0 + 0.05 * CGFloat(sin(t * 0.11 + Double(i) * 2.1)))
                     let y = size.height * (a.1 + 0.06 * CGFloat(cos(t * 0.09 + Double(i))))
                     let r = max(size.width, size.height) * a.2
@@ -179,42 +152,21 @@ struct MoodBackdrop: View {
                              with: .radialGradient(Gradient(colors: [color.opacity(a.3), color.opacity(0)]),
                                                    center: CGPoint(x: x, y: y), startRadius: 0, endRadius: r))
                 }
+                // Vignette keeps the edges deep so glass reads well.
+                let c = CGPoint(x: size.width / 2, y: size.height / 2)
+                ctx.fill(Path(CGRect(origin: .zero, size: size)),
+                         with: .radialGradient(Gradient(colors: [.clear, .black.opacity(0.55)]), center: c,
+                                               startRadius: min(size.width, size.height) * 0.35, endRadius: max(size.width, size.height) * 0.75))
             }
         }
         .ignoresSafeArea()
     }
 }
 
-/// A soft iridescent glow orb (the pastel blob behind Moodi).
-struct IridescentOrb: View {
-    var size: CGFloat
-    var tint: Color? = nil
-
-    var body: some View {
-        TimelineView(.animation(minimumInterval: 1.0 / 30)) { context in
-            let t = context.date.timeIntervalSinceReferenceDate
-            ZStack {
-                Circle()
-                    .fill(AngularGradient(colors: Palette.iridescent, center: .center, angle: .degrees(t * 12)))
-                    .blur(radius: size * 0.12)
-                    .opacity(0.85)
-                if let tint {
-                    Circle().fill(RadialGradient(colors: [tint.opacity(0.7), tint.opacity(0)], center: .center, startRadius: 0, endRadius: size * 0.5))
-                }
-                Circle().fill(RadialGradient(colors: [.white.opacity(0.85), .white.opacity(0)], center: UnitPoint(x: 0.42, y: 0.35),
-                                             startRadius: 0, endRadius: size * 0.42))
-            }
-            .frame(width: size, height: size)
-            .scaleEffect(1 + 0.025 * sin(t * 1.3))
-        }
-        .allowsHitTesting(false)
-    }
-}
-
-/// Small twinkling motes that drift over the room.
+/// Small twinkling motes that drift over dark screens.
 struct TwinkleField: View {
     var count = 28
-    var color: Color = Palette.lilac
+    var color: Color = .white
 
     var body: some View {
         TimelineView(.animation(minimumInterval: 1.0 / 30)) { context in

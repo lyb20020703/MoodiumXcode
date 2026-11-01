@@ -5,7 +5,7 @@ struct RootView: View {
 
     var body: some View {
         ZStack {
-            Palette.roomTop.ignoresSafeArea()
+            Palette.ink.ignoresSafeArea()
             switch app.stage {
             case .opening:
                 OpeningView().transition(.opacity)

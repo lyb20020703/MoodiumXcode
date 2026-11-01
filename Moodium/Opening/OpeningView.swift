@@ -54,7 +54,7 @@ struct OpeningView: View {
                     .transition(.opacity)
                 }
             }
-            .foregroundStyle(Palette.ink)
+            .foregroundStyle(.white)
         }
         .onAppear(perform: startFilm)
         .onDisappear {
@@ -81,7 +81,7 @@ struct OpeningView: View {
                     OpeningPill(title: app.t("没有", "No"), highlighted: !app.hasBase) { chooseBase(false) }
                 }
                 Text(app.t("没有也没关系，按住屏幕再松开也能捏捏", "No base? Press and release the screen to squeeze"))
-                    .font(.moodium(13)).foregroundStyle(Palette.textMuted)
+                    .font(.moodium(13)).foregroundStyle(.white.opacity(0.5))
             case .film:
                 EmptyView()
             }
