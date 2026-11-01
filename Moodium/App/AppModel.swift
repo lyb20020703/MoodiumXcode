@@ -4,6 +4,7 @@ enum Stage: Equatable {
     case opening
     case select
     case squeeze(MoodWorld)
+    case wish(MoodWorld)
 }
 
 enum Language: String { case zh, en }
@@ -87,4 +88,22 @@ final class AppModel: ObservableObject {
     }
 
     func closeMoodCheck() { moodCheck = nil }
+
+    /// A visit that went on to the wish chimes; finished (mood check after) when leaving them.
+    private var wishVisit: MoodVisitMetrics?
+
+    func openWish(_ world: MoodWorld, after visit: MoodVisitMetrics? = nil) {
+        wishVisit = visit
+        lastWorld = world
+        stage = .wish(world)
+    }
+
+    func leaveWish() {
+        if let visit = wishVisit {
+            wishVisit = nil
+            leaveWorld(visit)
+        } else {
+            stage = .select
+        }
+    }
 }

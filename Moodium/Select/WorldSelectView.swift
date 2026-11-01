@@ -105,6 +105,16 @@ struct WorldSelectView: View {
                     moodChip.padding(.top, 6)
                 }
                 Spacer()
+                Button {
+                    inviteWork?.cancel(); AudioDirector.shared.stopVoice()
+                    app.openWish(world)
+                } label: {
+                    Label(app.t("许愿风铃", "Wish chimes"), systemImage: "wind")
+                        .font(.moodium(14, .semibold))
+                        .padding(.horizontal, 14).frame(height: 46)
+                        .glass()
+                }
+                .buttonStyle(PressScaleStyle())
                 GlassIconButton(symbol: "gearshape.fill") { withAnimation { showSettings = true } }
             }
             .padding(.top, 14)

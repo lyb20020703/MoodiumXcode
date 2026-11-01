@@ -13,6 +13,8 @@ struct RootView: View {
                 WorldSelectView().transition(.opacity)
             case .squeeze(let world):
                 SqueezeView(world: world).id(world).transition(.opacity)
+            case .wish(let world):
+                WishView(world: world).id("wish-\(world.rawValue)").transition(.opacity)
             }
             if let request = app.moodCheck {
                 MoodCheckView(request: request).transition(.opacity).zIndex(5)

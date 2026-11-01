@@ -72,6 +72,11 @@ struct SqueezeView: View {
         director.configure(language: app.language, hasBase: app.hasBase, sensitivity: app.sensitivity, mood: app.preSample?.mood)
     }
 
+    private func wish() {
+        director.stopShower()
+        app.openWish(world, after: director.metrics)
+    }
+
     private func exit() {
         director.stopShower()
         app.leaveWorld(director.metrics)
@@ -177,7 +182,7 @@ struct SqueezeView: View {
     }
 
     private var completionCard: some View {
-        VStack(spacing: 10) {
+        VStack(spacing: 8) {
             HStack {
                 Text(app.t("Moodi 得救啦！", "Moodi is free!")).font(.moodium(24, .bold))
                 Spacer(minLength: 8)
@@ -192,16 +197,17 @@ struct SqueezeView: View {
                     .foregroundStyle(world.accent)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
-            Label(app.t("能量满啦，右下角可以下一场\(world == .candy ? "糖果雨" : "花草雨")",
-                        "Energy full — try the \(world == .candy ? "Candy Shower" : "Meadow Shower") below"),
-                  systemImage: "sparkles")
-                .font(.moodium(13)).foregroundStyle(Palette.textMuted)
-                .frame(maxWidth: .infinity, alignment: .leading)
+            Button { wish() } label: {
+                Label(app.t("写一张心愿，挂成风铃", "Write a wish, hang it as a chime"), systemImage: "wind")
+                    .lineLimit(1).fixedSize()
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(GlassButtonStyle(tint: world.accent, prominent: true))
             HStack(spacing: 10) {
                 Button { director.replay() } label: {
                     Label(app.t("再救一次", "Again"), systemImage: "arrow.counterclockwise").lineLimit(1).fixedSize()
                 }
-                .buttonStyle(GlassButtonStyle(tint: world.accent, prominent: true))
+                .buttonStyle(GlassButtonStyle())
                 Button { exit() } label: {
                     Label(app.t("换个世界", "Other world"), systemImage: "globe.asia.australia.fill").lineLimit(1).fixedSize()
                 }
@@ -209,12 +215,12 @@ struct SqueezeView: View {
             }
             .padding(.top, 2)
         }
-        .padding(.horizontal, 22).padding(.vertical, 16)
+        .padding(.horizontal, 22).padding(.vertical, 14)
         .frame(width: 372)
         .glass(RoundedRectangle(cornerRadius: 26, style: .continuous), tint: Palette.smoke, amount: 0.55)
         // Top right, clear of Moodi in the middle and the dock below.
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
-        .padding(.top, 70).padding(.trailing, 22)
+        .padding(.top, 64).padding(.trailing, 22)
     }
 
     // MARK: Touch fallback

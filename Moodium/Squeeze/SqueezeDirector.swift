@@ -717,6 +717,11 @@ enum VoiceLines {
         "S1c": ("来糖果世界玩吧，甜甜的哦～", "Come play in Candy World — it's sweet!"),
         "S1n": ("来自然世界，一起听听风吧～", "Come to Nature World — let's listen to the wind!"),
         "S2": ("今天的你，会喜欢这里哦～", "I think you'll love it here today!"),
+        "B3": ("要不要写下一件想放下的事，或者一个小心愿？", "Would you like to write down something you want to let go of, or a little wish?"),
+        "B5": ("写好了吗？把它托起来，轻轻放飞吧。", "All done? Hold it up, and gently let it go."),
+        "B6": ("它会替你在这里保管。", "It will keep it safe for you, right here."),
+        "B7": ("你的风铃还在这里等你呢。", "Your wind chimes are still here, waiting for you."),
+        "B8": ("没关系，重新写就好。", "That's okay, just write it again."),
     ]
 
     static func text(_ id: String, _ language: Language) -> String {
