@@ -82,9 +82,6 @@ struct ModeHelpCard: View {
                 row("mode_icon_breath", app.t("呼吸", "Breath"),
                     app.t("按住\(thing)慢慢吸气 3–5 秒，松开慢慢呼气。呼吸得越舒服，能量越多。",
                           "Hold \(thing) and breathe in for 3–5 s, then let go and breathe out. Calm breaths earn the most."))
-                Text(app.t("能量集满后，右下角可以下一场\(world == .candy ? "糖果雨" : "花草雨")。",
-                           "When the energy is full, start a \(world == .candy ? "Candy Shower" : "Meadow Shower") at the bottom right."))
-                    .font(.moodium(13)).foregroundStyle(Palette.textMuted)
             }
             .foregroundStyle(.white)
             .padding(22)
@@ -222,107 +219,5 @@ struct BreathGuide: View {
             }
         }
         .allowsHitTesting(false)
-    }
-}
-
-// MARK: - Dock (shower + exit)
-
-/// The shower button from the visionOS world dock (WorldActionDock): Candy Shower / Meadow Shower,
-/// locked (with a progress line) until the energy is full, "Stop" while raining. The dock's exit
-/// button is left out on the phone: the back button already leaves the world.
-struct WorldDock: View {
-    @EnvironmentObject private var app: AppModel
-    @ObservedObject var director: SqueezeDirector
-    private let height: CGFloat = 64
-
-    var body: some View {
-        let w = director.world.rawValue, l = app.language.rawValue
-        let shower: String = !director.showerUnlocked ? "dock_shower_locked_\(w)_\(l)"
-            : director.showering ? "dock_stop_\(w)_\(l)" : "dock_shower_\(w)_\(l)"
-        VStack(alignment: .trailing, spacing: 2) {
-            if let toast = director.dockToast {
-                Text(toast)
-                    .font(.moodium(13, .semibold))
-                    .padding(.horizontal, 14).padding(.vertical, 8)
-                    .glass(tint: director.world.accent, amount: 0.25)
-                    .padding(.trailing, 10)
-                    .transition(.opacity.combined(with: .move(edge: .bottom)))
-            }
-            SpriteButton(base: shower, pressable: director.showerUnlocked, height: height) { director.showerPressed() }
-                .overlay(alignment: .bottom) {
-                    if !director.showerUnlocked {
-                        Capsule().fill(.white.opacity(0.15)).frame(width: height * 1.4, height: 3)
-                            .overlay(alignment: .leading) {
-                                Capsule().fill(director.world.accent).frame(width: height * 1.4 * director.energy, height: 3)
-                            }
-                            .offset(y: -height * 0.14)
-                    }
-                }
-                .modifier(Shake(trigger: director.lockedShakeAt))
-                .modifier(ReadyBounce(active: director.showerUnlocked && !director.showering))
-        }
-    }
-}
-
-/// A button drawn with the exported idle / pressed sprites.
-struct SpriteButton: View {
-    let base: String
-    var pressable = true
-    let height: CGFloat
-    let action: () -> Void
-
-    var body: some View {
-        Button(action: action) { EmptyView() }
-            .buttonStyle(SpriteStyle(base: base, pressable: pressable, height: height))
-    }
-
-    private struct SpriteStyle: ButtonStyle {
-        let base: String
-        let pressable: Bool
-        let height: CGFloat
-        func makeBody(configuration: Configuration) -> some View {
-            let idle = UIImage(named: base + "_idle") != nil ? base + "_idle" : base
-            let pressed = base + "_pressed"
-            let name = configuration.isPressed && pressable && UIImage(named: pressed) != nil ? pressed : idle
-            Image(asset: name).resizable().scaledToFit()
-                .frame(height: height)
-                .shadow(color: .black.opacity(0.25), radius: 6, y: 3)
-                .contentShape(Capsule().inset(by: height * 0.18))
-                .scaleEffect(configuration.isPressed ? 0.95 : 1)
-                .animation(.spring(response: 0.2, dampingFraction: 0.65), value: configuration.isPressed)
-        }
-    }
-}
-
-/// Horizontal wiggle when `trigger` changes.
-struct Shake: ViewModifier {
-    var trigger: Date?
-    @State private var offset: CGFloat = 0
-    func body(content: Content) -> some View {
-        content.offset(x: offset)
-            .onChange(of: trigger) { _, _ in
-                for (k, x) in [8, -7, 5, -3, 0].enumerated() {
-                    DispatchQueue.main.asyncAfter(deadline: .now() + Double(k) * 0.06) {
-                        withAnimation(.easeInOut(duration: 0.06)) { offset = CGFloat(x) }
-                    }
-                }
-            }
-    }
-}
-
-/// Two little hops when the shower unlocks, then a slow glow pulse.
-struct ReadyBounce: ViewModifier {
-    var active: Bool
-    @State private var hop: CGFloat = 0
-    func body(content: Content) -> some View {
-        content.offset(y: hop)
-            .onChange(of: active) { _, on in
-                guard on else { return }
-                for (k, y) in [-10, 0, -6, 0].enumerated() {
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 2.5 + Double(k) * 0.14) {
-                        withAnimation(.spring(response: 0.2, dampingFraction: 0.55)) { hop = CGFloat(y) }
-                    }
-                }
-            }
     }
 }

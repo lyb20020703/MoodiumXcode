@@ -11,7 +11,6 @@ import SpriteKit
 /// - three ways to squeeze (free / rhythm / breath, SqueezeModeController), the mood check
 ///   picks the first one;
 /// - four gifts grow next to the pillow at 20 / 50 / 80 / 100 %;
-/// - a Candy Shower / Meadow Shower button once the energy is full, and an exit button;
 /// - poke Moodi and it giggles (Touched).
 @MainActor
 final class SqueezeDirector: ObservableObject {
@@ -41,9 +40,6 @@ final class SqueezeDirector: ObservableObject {
 
     // Gifts and dock
     @Published private(set) var giftsGrown = 0
-    @Published private(set) var showering = false
-    @Published private(set) var dockToast: String?
-    @Published private(set) var lockedShakeAt: Date?
 
     let world: MoodWorld
     let stage: SoftStage
@@ -71,7 +67,6 @@ final class SqueezeDirector: ObservableObject {
     private var running = false
     private var introStarted = false
     private var popped = false
-    private var readyToastShown = false
     private var everCompleted = false
 
     // Scoring
@@ -166,7 +161,6 @@ final class SqueezeDirector: ObservableObject {
         holdTimer?.invalidate()
         tickTimer?.invalidate()
         sensor.stop()
-        stage.stopShower()
         audio.stopVoice()
         audio.stopBreath()
         audio.stopMusic()
@@ -480,20 +474,17 @@ final class SqueezeDirector: ObservableObject {
         after(3.05) { [weak self] in withAnimation { self?.showCard = true } }
     }
 
-    /// Close the "Moodi is free" card and stay to play (the dock then nudges the shower).
+    /// Close the "Moodi is free" card and stay to play.
     func dismissCard() {
         withAnimation(.easeOut(duration: 0.25)) { showCard = false }
-        after(0.4) { [weak self] in self?.showReadyToast() }
     }
 
     func replay() {
         withAnimation(.easeOut(duration: 0.25)) { showCard = false }
         cancelPending()
         audio.stopVoice()
-        stopShower()
         energy = 0; units = 0
         squeezes = 0
-        readyToastShown = false
         giftsGrown = 0
         sparkles.setEnergy(0)
         sparkles.moodiLeave()
@@ -503,46 +494,6 @@ final class SqueezeDirector: ObservableObject {
         sessionStart = CACurrentMediaTime()
         if stage.usesMeshMoodi { stage.withRescue { $0.leave() } } else { stage.regrowJelly() }
         after(0.7) { [weak self] in self?.runIntro() }
-    }
-
-    // MARK: - Dock (shower + exit)
-
-    var showerUnlocked: Bool { energy >= 1 }
-
-    func showerPressed() {
-        guard showerUnlocked else {
-            // locked: wiggle and remind
-            withAnimation(.default) { lockedShakeAt = Date() }
-            haptics.edge(0.6)
-            flashDockToast(language == .zh ? "继续捏一捏，集满能量就能用" : "Keep squeezing — fill the energy to use it")
-            return
-        }
-        if showering { stopShower(); return }
-        showering = true
-        withAnimation(.easeOut(duration: 0.3)) { showCard = false }
-        audio.sfx("sfx_chime", volume: 0.5)
-        haptics.squeeze(0.5)
-        stage.startShower { [weak self] in Task { @MainActor in self?.showering = false } }
-    }
-
-    func stopShower() {
-        stage.stopShower()
-        showering = false
-    }
-
-    private func showReadyToast() {
-        guard !readyToastShown else { return }
-        readyToastShown = true
-        flashDockToast(world == .candy ? (language == .zh ? "能量满啦，下一场糖果雨吧" : "Energy full — make it rain candy!")
-                                       : (language == .zh ? "能量满啦，下一场花草雨吧" : "Energy full — let the meadow shower fall!"))
-    }
-
-    private func flashDockToast(_ text: String) {
-        withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) { dockToast = text }
-        after(2.6) { [weak self] in
-            guard let self, self.dockToast == text else { return }
-            withAnimation(.easeOut(duration: 0.3)) { self.dockToast = nil }
-        }
     }
 
     // MARK: - Moodi poke

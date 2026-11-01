@@ -52,8 +52,6 @@ final class SoftStage: NSObject, SCNSceneRendererDelegate, SCNPhysicsContactDele
     private let walls = SCNNode()
     private var templates: [SCNNode] = []
     let garden: GiftGarden
-    private var shower: Timer?
-    var isShowering: Bool { shower != nil }
 
     private let lock = NSLock()
     private var squash: Float = 0, squashVel: Float = 0
@@ -339,24 +337,6 @@ final class SoftStage: NSObject, SCNSceneRendererDelegate, SCNPhysicsContactDele
                 self.spawnProp(at: SIMD2(x, self.halfH - 0.4), velocity: SIMD2(Float.random(in: -1...1), Float.random(in: -2...0)))
             }
         }
-    }
-
-    /// Candy Shower / Meadow Shower: props keep falling from the top edge until stopped
-    /// (or for 40 s at most). Tilt the phone and the shower slides that way.
-    func startShower(onEnd: @escaping () -> Void) {
-        stopShower()
-        let started = Date()
-        shower = Timer.scheduledTimer(withTimeInterval: 0.11, repeats: true) { [weak self] timer in
-            guard let self else { timer.invalidate(); return }
-            if Date().timeIntervalSince(started) > 40 { self.stopShower(); onEnd(); return }
-            let x = Float.random(in: -0.94...0.94) * self.halfW
-            self.spawnProp(at: SIMD2(x, self.halfH - 0.35), velocity: SIMD2(Float.random(in: -0.8...0.8), Float.random(in: -2.5...0)))
-        }
-    }
-
-    func stopShower() {
-        shower?.invalidate()
-        shower = nil
     }
 
     /// Screen point (UIKit) of a world-space point.

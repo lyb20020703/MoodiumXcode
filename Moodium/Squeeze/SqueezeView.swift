@@ -81,12 +81,10 @@ struct SqueezeView: View {
     }
 
     private func wish() {
-        director.stopShower()
         app.openWish(world, after: director.metrics)
     }
 
     private func exit() {
-        director.stopShower()
         app.leaveWorld(director.metrics)
     }
 
@@ -123,11 +121,6 @@ struct SqueezeView: View {
                 GlassIconButton(symbol: "gearshape.fill") { withAnimation { showSettings = true } }
             }
             Spacer()
-            ZStack(alignment: .bottom) {
-                // the shower button tucked into the bottom-right corner
-                WorldDock(director: director)
-                    .frame(maxWidth: .infinity, alignment: .trailing)
-                    .offset(x: 12, y: 8)
             VStack(spacing: 8) {
                 if let subtitle = director.subtitle {
                     HStack(spacing: 8) {
@@ -158,7 +151,6 @@ struct SqueezeView: View {
             }
             .frame(maxWidth: 360)
             .padding(.bottom, 4)
-            }
         }
     }
 
