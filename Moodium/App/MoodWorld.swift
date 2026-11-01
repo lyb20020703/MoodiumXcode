@@ -30,6 +30,15 @@ enum MoodWorld: String, CaseIterable, Identifiable, Hashable {
         }
     }
 
+    /// Lines the original pillow up with the old mouth version in Moodi's rig units
+    /// (found by registering the two meshes: Z-up → Y-up, scale, offset).
+    var wholeSoftFit: MoodiRescueRig.WholeSoftFit {
+        switch self {
+        case .candy: return .init(scale: 9.16612, offset: SIMD3(0.91707, -0.49782, 0.91875), rimY: 0.047)
+        case .nature: return .init(scale: 9.17405, offset: SIMD3(0.41877, -0.35656, -0.13767), rimY: 0.212)
+        }
+    }
+
     func moodiLine(_ l: Language) -> String {
         switch self {
         case .candy: return l == .zh ? "这里软软甜甜的～" : "It's so soft and sweet here!"

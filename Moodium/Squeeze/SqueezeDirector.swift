@@ -73,6 +73,7 @@ final class SqueezeDirector: ObservableObject {
     private var introStarted = false
     private var popped = false
     private var readyToastShown = false
+    private var everCompleted = false
 
     // Scoring
     private var params = SqueezeParameters()
@@ -196,7 +197,8 @@ final class SqueezeDirector: ObservableObject {
     }
 
     var metrics: MoodVisitMetrics {
-        MoodVisitMetrics(world: world, seconds: Date().timeIntervalSince(visitStart), squeezes: totalSqueezes, mode: mode)
+        MoodVisitMetrics(world: world, seconds: Date().timeIntervalSince(visitStart), squeezes: totalSqueezes, mode: mode,
+                         completed: phase == .complete || everCompleted)
     }
 
     // MARK: - Story
@@ -455,6 +457,7 @@ final class SqueezeDirector: ObservableObject {
 
     private func complete() {
         phase = .complete
+        everCompleted = true
         acceptingSqueezes = false
         if holdStart != nil { holdEnded(interrupted: true) }
         withAnimation { showHint = false; guide = nil }

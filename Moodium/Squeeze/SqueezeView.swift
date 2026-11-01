@@ -48,6 +48,14 @@ struct SqueezeView: View {
                     .padding(.horizontal, 18)
                     .padding(.vertical, 12)
 
+                ModeBar(director: director, showHelp: $showHelp)
+                    .opacity(director.phase == .complete ? 0 : 1)
+                    .animation(.easeOut(duration: 0.3), value: director.phase)
+                    .disabled(director.phase == .complete)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .trailing)
+                    .padding(.trailing, 16)
+                    .offset(y: -6)
+
                 if director.showCard { completionCard.transition(.scale(scale: 0.9).combined(with: .opacity)) }
 
                 if showHelp { ModeHelpCard(world: world, touchMode: director.touchMode, isPresented: $showHelp).transition(.opacity) }
@@ -84,7 +92,7 @@ struct SqueezeView: View {
 
     /// Mode switch, gift and "energy full" messages under the ring.
     private func toasts(_ size: CGSize) -> some View {
-        VStack(spacing: 8) {
+        VStack(alignment: .leading, spacing: 8) {
             if director.modeToastAt != nil {
                 HStack(spacing: 6) {
                     Image(asset: director.mode.icon).resizable().frame(width: 16, height: 16)
@@ -105,7 +113,8 @@ struct SqueezeView: View {
                 .transition(.scale(scale: 0.85).combined(with: .opacity))
             }
         }
-        .position(x: size.width / 2, y: size.height * 0.19 + 96 * ringScale(size) + 22)
+        .frame(width: 220)
+        .position(x: size.width / 2 + 100 * ringScale(size) + 120, y: size.height * 0.19)
         .allowsHitTesting(false)
     }
 
@@ -131,13 +140,10 @@ struct SqueezeView: View {
             }
             Spacer()
             ZStack(alignment: .bottom) {
-                HStack(alignment: .bottom) {
-                    ModeBar(director: director, showHelp: $showHelp)
-                        .opacity(director.phase == .complete ? 0.4 : 1)
-                        .disabled(director.phase == .complete)
-                    Spacer()
-                    WorldDock(director: director) { exit() }
-                }
+                // the shower button tucked into the bottom-right corner
+                WorldDock(director: director)
+                    .frame(maxWidth: .infinity, alignment: .trailing)
+                    .offset(x: 12, y: 8)
             VStack(spacing: 8) {
                 if let subtitle = director.subtitle {
                     HStack(spacing: 8) {

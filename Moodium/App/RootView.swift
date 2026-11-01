@@ -9,6 +9,8 @@ struct RootView: View {
             switch app.stage {
             case .opening:
                 OpeningView().transition(.opacity)
+            case .home:
+                HomeView().transition(.opacity)
             case .select:
                 WorldSelectView().transition(.opacity)
             case .squeeze(let world):

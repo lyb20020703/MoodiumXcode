@@ -9,7 +9,7 @@ struct ModeBar: View {
     @Binding var showHelp: Bool
 
     var body: some View {
-        HStack(spacing: 8) {
+        VStack(spacing: 0) {
             ForEach(SqueezeMode.allCases) { m in
                 puck(icon: m.icon, label: m.name(app.language), selected: director.mode == m,
                      recommended: director.recommendedMode == m) {
@@ -24,27 +24,27 @@ struct ModeBar: View {
 
     private func puck(icon: String, label: String, selected: Bool, recommended: Bool, action: @escaping () -> Void) -> some View {
         Button(action: action) {
-            VStack(spacing: 3) {
+            VStack(spacing: 1) {
                 ZStack {
                     if selected {
                         Image(asset: "mode_btn_selected_glow").resizable()
-                            .frame(width: 58, height: 58)
+                            .frame(width: 50, height: 50)
                             .colorMultiply(director.world.accent)
                             .transition(.opacity)
                     }
-                    Image(asset: "mode_btn_base").resizable().frame(width: 44, height: 44)
-                    Image(asset: icon).resizable().frame(width: 22, height: 22)
+                    Image(asset: "mode_btn_base").resizable().frame(width: 38, height: 38)
+                    Image(asset: icon).resizable().frame(width: 19, height: 19)
                         .opacity(selected ? 1 : 0.78)
                     if recommended {
                         Image(asset: "icon_star").resizable().frame(width: 12, height: 12)
                             .padding(3)
                             .background(Circle().fill(director.world.accent))
-                            .offset(x: 17, y: -17)
+                            .offset(x: 15, y: -15)
                     }
                 }
-                .frame(width: 50, height: 50)
+                .frame(width: 42, height: 42)
                 Text(label)
-                    .font(.moodium(11, selected ? .bold : .medium))
+                    .font(.moodium(10, selected ? .bold : .medium))
                     .foregroundStyle(selected ? .white : Palette.textMuted)
                     .lineLimit(1).minimumScaleFactor(0.7)
                     .frame(width: 52)
@@ -227,41 +227,39 @@ struct BreathGuide: View {
 
 // MARK: - Dock (shower + exit)
 
-/// The floating world dock (WorldActionDock): left = Candy Shower / Meadow Shower (locked until
-/// the energy is full, "Stop" while raining), right = exit.
+/// The shower button from the visionOS world dock (WorldActionDock): Candy Shower / Meadow Shower,
+/// locked (with a progress line) until the energy is full, "Stop" while raining. The dock's exit
+/// button is left out on the phone: the back button already leaves the world.
 struct WorldDock: View {
     @EnvironmentObject private var app: AppModel
     @ObservedObject var director: SqueezeDirector
-    let onExit: () -> Void
-    private let height: CGFloat = 76
+    private let height: CGFloat = 64
 
     var body: some View {
         let w = director.world.rawValue, l = app.language.rawValue
         let shower: String = !director.showerUnlocked ? "dock_shower_locked_\(w)_\(l)"
             : director.showering ? "dock_stop_\(w)_\(l)" : "dock_shower_\(w)_\(l)"
-        VStack(alignment: .trailing, spacing: 6) {
+        VStack(alignment: .trailing, spacing: 2) {
             if let toast = director.dockToast {
                 Text(toast)
                     .font(.moodium(13, .semibold))
                     .padding(.horizontal, 14).padding(.vertical, 8)
                     .glass(tint: director.world.accent, amount: 0.25)
+                    .padding(.trailing, 10)
                     .transition(.opacity.combined(with: .move(edge: .bottom)))
             }
-            HStack(spacing: -10) {
-                SpriteButton(base: shower, pressable: director.showerUnlocked, height: height) { director.showerPressed() }
-                    .overlay(alignment: .bottom) {
-                        if !director.showerUnlocked {
-                            Capsule().fill(.white.opacity(0.15)).frame(width: height * 1.4, height: 3)
-                                .overlay(alignment: .leading) {
-                                    Capsule().fill(director.world.accent).frame(width: height * 1.4 * director.energy, height: 3)
-                                }
-                                .offset(y: -height * 0.14)
-                        }
+            SpriteButton(base: shower, pressable: director.showerUnlocked, height: height) { director.showerPressed() }
+                .overlay(alignment: .bottom) {
+                    if !director.showerUnlocked {
+                        Capsule().fill(.white.opacity(0.15)).frame(width: height * 1.4, height: 3)
+                            .overlay(alignment: .leading) {
+                                Capsule().fill(director.world.accent).frame(width: height * 1.4 * director.energy, height: 3)
+                            }
+                            .offset(y: -height * 0.14)
                     }
-                    .modifier(Shake(trigger: director.lockedShakeAt))
-                    .modifier(ReadyBounce(active: director.showerUnlocked && !director.showering))
-                SpriteButton(base: "dock_exit_\(l)", pressable: true, height: height, action: onExit)
-            }
+                }
+                .modifier(Shake(trigger: director.lockedShakeAt))
+                .modifier(ReadyBounce(active: director.showerUnlocked && !director.showering))
         }
     }
 }

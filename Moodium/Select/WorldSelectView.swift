@@ -96,7 +96,11 @@ struct WorldSelectView: View {
 
     private func overlay(size: CGSize) -> some View {
         VStack(spacing: 0) {
-            HStack(alignment: .top) {
+            HStack(alignment: .top, spacing: 12) {
+                GlassIconButton(symbol: "house.fill") {
+                    inviteWork?.cancel(); AudioDirector.shared.stopVoice()
+                    app.goHome()
+                }
                 VStack(alignment: .leading, spacing: 4) {
                     Text(app.t("今天，想去哪里？", "Where to today?"))
                         .font(.moodium(28, .bold))

@@ -55,7 +55,8 @@ final class GiftGarden {
 
     /// Screen anchors: x as a fraction of half-width, base y as a fraction of half-height.
     /// Small gifts sit nearer the pillow, the big ones further out.
-    private let anchors: [SIMD2<Float>] = [[-0.62, -0.5], [0.62, -0.5], [-0.84, -0.4], [0.84, -0.4]]
+    /// The right side leaves room for the mode buttons and the shower button.
+    private let anchors: [SIMD2<Float>] = [[-0.62, -0.5], [0.63, -0.52], [-0.84, -0.4], [0.76, -0.34]]
 
     init(world: MoodWorld) {
         gifts = Gift.all(for: world)

@@ -43,7 +43,7 @@ final class SoftStage: NSObject, SCNSceneRendererDelegate, SCNPhysicsContactDele
     }
     func mouthScreenPoint() -> CGPoint? {
         guard let rescue, let view else { return nil }
-        let p = view.projectPoint(rescue.node.convertPosition(SCNVector3Zero, to: nil))
+        let p = view.projectPoint(rescue.anchorNode.convertPosition(SCNVector3Zero, to: nil))
         return CGPoint(x: CGFloat(p.x), y: CGFloat(p.y))
     }
     private let jellyFit = SCNNode()     // scales the unit-width model to the screen
@@ -133,10 +133,12 @@ final class SoftStage: NSObject, SCNSceneRendererDelegate, SCNPhysicsContactDele
         let world = self.world
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
             var rig: MoodiRescueRig?
+            // The pillow stays whole (no opening) and Moodi rises out of its surface, as in the
+            // visionOS world-fix-1030 rise. The tracks file still carries Moodi's animation.
             if !UserDefaults.standard.bool(forKey: "MoodiSprite"),
-               let soft = Res.url(world.softModel + "_Mouth", "usdz"), let moodi = Res.url("Moodi", "usdz"),
+               let soft = Res.url(world.softModel, "usdz"), let moodi = Res.url("Moodi", "usdz"),
                let tracks = Res.url(world.softModel + "_MoodiTracks", "json") {
-                rig = MoodiRescueRig(softURL: soft, moodiURL: moodi, tracksURL: tracks)
+                rig = MoodiRescueRig(softURL: soft, moodiURL: moodi, tracksURL: tracks, wholeSoft: world.wholeSoftFit)
             }
             let loadedRig = rig
             let jelly = ModelLoader.load(world.softModel, extent: 1, bottomPivot: true)
@@ -316,7 +318,7 @@ final class SoftStage: NSObject, SCNSceneRendererDelegate, SCNPhysicsContactDele
         for n in 0..<count {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.045 * Double(n)) { [weak self] in
                 guard let self else { return }
-                let mouth = self.rescue?.node.convertPosition(SCNVector3Zero, to: nil)
+                let mouth = self.rescue?.anchorNode.convertPosition(SCNVector3Zero, to: nil)
                 let centerX = (mouth?.x ?? 0) * self.cameraDistance / (self.cameraDistance - (mouth?.z ?? 0))
                 let x = centerX + Float.random(in: -0.2...0.2) * self.jellyWidth
                 let y = self.jellyTopY + 0.35
@@ -481,7 +483,7 @@ final class SoftStage: NSObject, SCNSceneRendererDelegate, SCNPhysicsContactDele
         lean += leanVel * dt
         parallax += (parallaxTarget - parallax) * min(1, dt * 4)
         rescue?.update(dt: dt)
-        let s = squash * (rescue == nil ? 1 : 0.6), l = lean, px = parallax
+        let s = squash * 0.85, l = lean, px = parallax
         lock.unlock()
 
         jellySpring.scale = SCNVector3(1 + 0.42 * s, 1 - 0.5 * s, 1 + 0.3 * s)

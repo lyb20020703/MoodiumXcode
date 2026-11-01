@@ -195,7 +195,7 @@ final class MoodiRescueRig {
     var popThreshold: Float = 0.995
     /// Where Moodi floats after jumping out, in rig units (up = out of the mouth, +Z = Moodi's front).
     var hoverPoint = SIMD3<Float>(0, 2.3, 1.3)
-    var hoverScale: Float = 1.25
+    var hoverScale: Float = 1.0
     /// Where Moodi stops to wave before slipping into the opening.
     var waveAbove = SIMD3<Float>(0.4, 2.5, 0.5)
     var jumpDuration: Float = 0.6
@@ -223,31 +223,69 @@ final class MoodiRescueRig {
     private var touchedAt: Float?
 
     private let moodiRig: BoneRig
-    private let mouthRig: BoneRig
+    /// nil when the pillow is the original model without an opening (the visionOS world-fix-1030
+    /// rise: the soft model stays whole and Moodi rises out of its surface).
+    private let mouthRig: BoneRig?
     private let eyes: [(Int, Int)]   // bone index, axis to squash
+    /// Where Moodi sits: the opening in the mouth version, the top of the surface otherwise.
+    let anchorNode = SCNNode()
+
+    /// How to place the original (Z-up, unit-width) CandySoft / NatureSoft so it lines up with the
+    /// mouth version's body in rig units, found by registering the two meshes.
+    struct WholeSoftFit {
+        var scale: Float
+        var offset: SIMD3<Float>
+        /// Height of the old opening's rim: Moodi's animation is authored to come out at this height.
+        var rimY: Float
+    }
 
     /// Loads one world. Do this off the main thread (USDZ + JSON ≈ 0.3 s).
-    init?(softURL: URL, moodiURL: URL, tracksURL: URL) {
+    /// With `wholeSoft`, `softURL` is the original pillow without an opening.
+    init?(softURL: URL, moodiURL: URL, tracksURL: URL, wholeSoft: WholeSoftFit? = nil) {
         guard let softScene = try? SCNScene(url: softURL, options: [.checkConsistency: false]),
               let moodiScene = try? SCNScene(url: moodiURL, options: [.checkConsistency: false]),
               let data = try? Data(contentsOf: tracksURL),
               let tracks = try? JSONDecoder().decode(MoodiTracks.self, from: data) else { return nil }
         let softHolder = SCNNode(), moodiHolder = SCNNode()
-        for child in softScene.rootNode.childNodes { softHolder.addChildNode(child) }
+        if let fit = wholeSoft {
+            let turned = SCNNode()
+            turned.simdOrientation = simd_quatf(angle: -.pi / 2, axis: SIMD3(1, 0, 0))
+            turned.simdScale = SIMD3(repeating: fit.scale)
+            turned.simdPosition = fit.offset
+            for child in softScene.rootNode.childNodes { turned.addChildNode(child) }
+            softHolder.addChildNode(turned)
+        } else {
+            for child in softScene.rootNode.childNodes { softHolder.addChildNode(child) }
+        }
         for child in moodiScene.rootNode.childNodes { moodiHolder.addChildNode(child) }
         softNode = softHolder
         moodiNode = moodiHolder
         node.addChildNode(softNode)
-        node.addChildNode(moodiNode)
+        node.addChildNode(anchorNode)
+        anchorNode.addChildNode(moodiNode)
 
         moodiRig = BoneRig(tracks.moodi, fps: tracks.fps, under: moodiNode)
-        mouthRig = BoneRig(tracks.mouth, fps: tracks.fps, under: softNode)
-        guard moodiRig.missingBones.isEmpty, mouthRig.missingBones.isEmpty else { return nil }
+        mouthRig = wholeSoft == nil ? BoneRig(tracks.mouth, fps: tracks.fps, under: softNode) : nil
+        guard moodiRig.missingBones.isEmpty, mouthRig?.missingBones.isEmpty ?? true else { return nil }
+
+        if let fit = wholeSoft {
+            // Unity MoodiRiseDisplay: Moodi stands on the highest bit of surface within ~1.5 cm
+            // (0.69 rig units) of the spot, so it never starts sunk in a dip.
+            var top = -Float.greatestFiniteMagnitude
+            for (dx, dz) in [(0, 0), (0.45, 0), (-0.45, 0), (0, 0.45), (0, -0.45), (0.32, 0.32), (-0.32, 0.32), (0.32, -0.32), (-0.32, -0.32)] as [(Float, Float)] {
+                let hits = softNode.hitTestWithSegment(from: SCNVector3(dx, 50, dz), to: SCNVector3(dx, -50, dz),
+                                                       options: [SCNHitTestOption.searchMode.rawValue: SCNHitTestSearchMode.closest.rawValue])
+                if let h = hits.first { top = max(top, Float(softNode.convertPosition(h.worldCoordinates, from: nil).y)) }
+            }
+            if top > -1000 { anchorNode.simdPosition = SIMD3(0, top - fit.rimY, 0) }
+        }
 
         var lo = SIMD3<Float>(repeating: .greatestFiniteMagnitude), hi = -lo
         let container = node
+        let whole = wholeSoft != nil
         softNode.enumerateHierarchy { n, _ in
-            guard n.geometry != nil, n.skinner == nil, let name = n.parent?.name ?? n.name, name.hasSuffix("_Static") else { return }
+            guard n.geometry != nil, n.skinner == nil else { return }
+            if !whole { guard let name = n.parent?.name ?? n.name, name.hasSuffix("_Static") else { return } }
             let (a, b) = n.boundingBox
             for x in [a.x, b.x] { for y in [a.y, b.y] { for z in [a.z, b.z] {
                 let w = n.simdConvertPosition(SIMD3<Float>(Float(x), Float(y), Float(z)), to: container)
@@ -280,7 +318,7 @@ final class MoodiRescueRig {
         moodiNode.simdPosition = .zero
         moodiNode.simdOrientation = simd_quatf(ix: 0, iy: 0, iz: 0, r: 1)
         moodiNode.simdScale = SIMD3(repeating: 1)
-        mouthRig.apply(mouthRig.sample("Mouth_Emerge", frame: 0))
+        mouthRig.map { $0.apply($0.sample("Mouth_Emerge", frame: 0)) }
     }
 
     /// Same beats as the 2D sprite: fly in from `start` (rig units, e.g. off the top-right of the screen),
@@ -366,7 +404,7 @@ final class MoodiRescueRig {
 
         case .flyingIn:
             let t = phaseTime
-            mouthRig.apply(mouthRig.sample("Mouth_Emerge", frame: 0))
+            mouthRig.map { $0.apply($0.sample("Mouth_Emerge", frame: 0)) }
             if t < fly.fly {
                 // swoop in on a curve, slowing down above the opening
                 let u = t / fly.fly, e = 1 - (1 - u) * (1 - u)
@@ -400,16 +438,18 @@ final class MoodiRescueRig {
             let u = f / frames
             setMoodi(moodiRig.sample("FallIn", frame: f))
             let p = 0.35 * (1 - u) * (1 - u)
-            var mouth = mouthRig.sample("Mouth_Emerge", frame: p * 90)
-            mouth = mouthRig.addAdditive(mouth, clip: "Mouth_Pucker", weight: 0.6 * sin(.pi * u))
-            mouthRig.apply(mouth)
+            if let mouthRig {
+                var mouth = mouthRig.sample("Mouth_Emerge", frame: p * 90)
+                mouth = mouthRig.addAdditive(mouth, clip: "Mouth_Pucker", weight: 0.6 * sin(.pi * u))
+                mouthRig.apply(mouth)
+            }
             if u >= 1 { enter(.peeking) }
 
         case .peeking:
             let still = moodiRig.sample("Emerge", frame: 0)
             let wiggle = moodiRig.sample("Peek", time: phaseTime, loop: true)
             setMoodi(mixPose(still, wiggle, 0.3 + 0.7 * max(0, min(1, talk))))
-            mouthRig.apply(mouthRig.sample("Mouth_Emerge", frame: 0))
+            mouthRig.map { $0.apply($0.sample("Mouth_Emerge", frame: 0)) }
 
         case .emerging:
             progress = smoothDamp(progress, target, &velocity, smoothTime: smoothTime, maxSpeed: maxSpeed, dt: dt)
@@ -419,13 +459,15 @@ final class MoodiRescueRig {
             pose = moodiRig.addAdditive(pose, clip: "Strain", weight: s)   // includes the 0.26 lift while held
             if pressS < 0, let root = moodiRig.boneIndex("Root") { pose[root].t.z += 0.07 * pressS }  // sink on the rebound
             setMoodi(pose)
-            var mouth = mouthRig.sample("Mouth_Emerge", frame: progress * 90)
-            mouth = mouthRig.addAdditive(mouth, clip: "Mouth_Pucker", weight: s)
-            mouthRig.apply(mouth)
+            if let mouthRig {
+                var mouth = mouthRig.sample("Mouth_Emerge", frame: progress * 90)
+                mouth = mouthRig.addAdditive(mouth, clip: "Mouth_Pucker", weight: s)
+                mouthRig.apply(mouth)
+            }
             if progress >= popThreshold && target >= 1 { beginPop() }
 
         case .popping:
-            mouthRig.apply(mouthRig.sample("Mouth_Pop", time: phaseTime, loop: false))
+            mouthRig.map { $0.apply($0.sample("Mouth_Pop", time: phaseTime, loop: false)) }
             let u = min(1, phaseTime / jumpDuration)
             let e = u * u * (3 - 2 * u)
             // arc: up out of the opening, then over to the hover point; one full turn on the way
@@ -443,7 +485,7 @@ final class MoodiRescueRig {
             }
 
         case .free:
-            mouthRig.apply(mouthRig.sample("Mouth_Pop", time: 99, loop: false))
+            mouthRig.map { $0.apply($0.sample("Mouth_Pop", time: 99, loop: false)) }
             let happyLeft = moodiRig.duration("Happy") - (phaseTime + jumpDuration)
             let idle = moodiRig.sample("Idle", time: phaseTime, loop: true)
             let pose = happyLeft > 0 ? moodiRig.sample("Happy", time: phaseTime + jumpDuration, loop: false)
@@ -459,7 +501,7 @@ final class MoodiRescueRig {
             moodiNode.simdPosition = hoverPoint + SIMD3(0, 2.5 * u * u, 0)
             moodiNode.simdScale = SIMD3(repeating: max(0.001, hoverScale * (1 - e)))
             setMoodi(moodiRig.sample("Idle", time: clock, loop: true), keep: false)
-            mouthRig.apply(mixPose(mouthRig.sample("Mouth_Pop", frame: 999), mouthRig.sample("Mouth_Emerge", frame: 0), e))
+            if let m = mouthRig { m.apply(mixPose(m.sample("Mouth_Pop", frame: 999), m.sample("Mouth_Emerge", frame: 0), e)) }
             if u >= 1 { reset() }
         }
     }

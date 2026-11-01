@@ -113,6 +113,12 @@ struct OpeningView: View {
             player.seek(to: item.duration - CMTime(value: 1, timescale: 30), toleranceBefore: .zero, toleranceAfter: .zero)
         }
         player.pause()
+        // Questions only on the first launch; they can be changed in Settings later.
+        if app.onboarded {
+            AudioDirector.shared.sfx("sfx_portal", volume: 0.5)
+            app.goHome()
+            return
+        }
         withAnimation(.spring(response: 0.7, dampingFraction: 0.85)) { step = .language }
     }
 
@@ -123,9 +129,8 @@ struct OpeningView: View {
 
     private func chooseBase(_ has: Bool) {
         app.hasBase = has
+        app.onboarded = true
         AudioDirector.shared.sfx("sfx_portal", volume: 0.5)
-        app.stage = .select
-        // Moodi asks how you feel before you pick a world (skippable).
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) { app.moodCheck = .pre }
+        app.goHome()
     }
 }

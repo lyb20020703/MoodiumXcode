@@ -2,6 +2,8 @@ import SwiftUI
 
 enum Stage: Equatable {
     case opening
+    /// The hub: Moodi greets you; go squeeze, write a wish, check your mood or read the journal.
+    case home
     case select
     case squeeze(MoodWorld)
     case wish(MoodWorld)
@@ -24,6 +26,7 @@ final class AppModel: ObservableObject {
         static let sensitivity = "Moodium.Sensitivity"
         static let muted = "Moodium.Muted"
         static let lastWorld = "Moodium.LastWorld"
+        static let onboarded = "Moodium.Onboarded"
     }
 
     @Published var stage: Stage = .opening
@@ -32,7 +35,10 @@ final class AppModel: ObservableObject {
     // Mood check (MoodCheckController): asked once before choosing a world, and again
     // after leaving one, so the two answers can be compared.
     @Published var moodCheck: MoodCheckRequest?
-    @Published var preSample: MoodSample?
+    /// Today's mood answer (kept until the day ends).
+    @Published var preSample: MoodSample? {
+        didSet { defaults.set(try? JSONEncoder().encode(preSample), forKey: "Moodium.TodayMood") }
+    }
     /// Set when the pre check asked for a recommendation; the carousel tags that world.
     var recommendedWorld: MoodWorld? { preSample?.mood.recommendedWorld }
 
@@ -44,6 +50,13 @@ final class AppModel: ObservableObject {
 
     private let defaults = UserDefaults.standard
 
+    /// Language and base were answered once; later launches skip the questions.
+    var onboarded: Bool {
+        get { defaults.bool(forKey: Key.onboarded) }
+        set { defaults.set(newValue, forKey: Key.onboarded) }
+    }
+
+    func goHome() { stage = .home }
     init() {
         let d = UserDefaults.standard
         language = Language(rawValue: d.string(forKey: Key.language) ?? "") ?? .zh
@@ -53,6 +66,10 @@ final class AppModel: ObservableObject {
         muted = d.bool(forKey: Key.muted)
         lastWorld = MoodWorld(rawValue: d.string(forKey: Key.lastWorld) ?? "") ?? .candy
         AudioDirector.shared.muted = muted
+        if let data = d.data(forKey: "Moodium.TodayMood"), let sample = try? JSONDecoder().decode(MoodSample.self, from: data),
+           Calendar.current.isDateInToday(sample.date) {
+            preSample = sample
+        }
     }
 
     /// Picks the Chinese or English copy for the current language.
@@ -69,10 +86,11 @@ final class AppModel: ObservableObject {
 
     func backToSelect() { stage = .select }
 
-    /// Leaving a world: ask "and now?" if the mood was checked before, otherwise just go back.
+    /// Leaving a world: after a finished rescue, ask "and now?" if the mood was checked before;
+    /// otherwise just go back to the worlds.
     func leaveWorld(_ metrics: MoodVisitMetrics) {
         stage = .select
-        if preSample != nil, metrics.squeezes > 0 {
+        if preSample != nil, metrics.completed {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { self.moodCheck = .post(metrics) }
         } else {
             MoodLog.append(MoodVisit(world: metrics.world.rawValue, before: preSample, after: nil,
@@ -91,9 +109,11 @@ final class AppModel: ObservableObject {
 
     /// A visit that went on to the wish chimes; finished (mood check after) when leaving them.
     private var wishVisit: MoodVisitMetrics?
+    private var wishReturn: Stage = .home
 
     func openWish(_ world: MoodWorld, after visit: MoodVisitMetrics? = nil) {
         wishVisit = visit
+        wishReturn = stage == .home ? .home : .select
         lastWorld = world
         stage = .wish(world)
     }
@@ -103,7 +123,7 @@ final class AppModel: ObservableObject {
             wishVisit = nil
             leaveWorld(visit)
         } else {
-            stage = .select
+            stage = wishReturn
         }
     }
 }

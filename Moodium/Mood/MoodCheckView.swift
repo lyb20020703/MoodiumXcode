@@ -13,6 +13,8 @@ struct MoodVisitMetrics: Equatable {
     var seconds: Double
     var squeezes: Int
     var mode: SqueezeMode
+    /// Moodi was squeezed all the way out.
+    var completed = false
 }
 
 /// The visionOS mood check panel on the phone: a colour plate you drag Moodi across
@@ -352,7 +354,11 @@ struct MoodCheckView: View {
 
     /// Close. `world` = the world to show in the carousel.
     private func finish(_ world: MoodWorld?) {
-        if let world { app.lastWorld = world }
+        if let world {
+            app.lastWorld = world
+            // from the home screen, "go to Candy World" opens the worlds with that one in front
+            if app.stage == .home { app.stage = .select }
+        }
         withAnimation(.easeOut(duration: 0.3)) { appeared = false }
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { app.closeMoodCheck() }
     }
