@@ -33,7 +33,7 @@ struct WishView: View {
                 subtitle
                 if showSettings { SettingsPanel(isPresented: $showSettings).transition(.opacity) }
             }
-            .foregroundStyle(.white)
+            .foregroundStyle(Palette.ink)
             .animation(.easeInOut(duration: 0.35), value: wish.mode)
         }
         .onAppear {
@@ -48,13 +48,13 @@ struct WishView: View {
     private var backdrop: some View {
         Color.clear.overlay {
             ZStack {
-                Palette.ink
+                Palette.roomTop
                 if let image = Res.image(world.backdrop) {
                     Image(uiImage: image).resizable().scaledToFill().blur(radius: 5).scaleEffect(1.08)
                 }
-                LinearGradient(colors: [Palette.ink.opacity(0.35), Palette.ink.opacity(0.2), Palette.ink.opacity(0.75)],
+                LinearGradient(colors: [Palette.roomTop.opacity(0.6), Palette.roomMid.opacity(0.45), Palette.roomBottom.opacity(0.85)],
                                startPoint: .top, endPoint: .bottom)
-                TwinkleField(count: 24, color: .white.opacity(0.7))
+                TwinkleField(count: 18)
             }
         }
         .clipped()
@@ -115,7 +115,7 @@ struct WishView: View {
         let offset = wish.records.count - shown.count
         return ZStack(alignment: .topLeading) {
             // the line they hang from
-            Capsule().fill(.white.opacity(0.25)).frame(height: 1.5).offset(y: 4)
+            Capsule().fill(Palette.ink.opacity(0.18)).frame(height: 1.5).offset(y: 4)
             ForEach(Array(shown.enumerated()), id: \.element.id) { k, record in
                 let i = offset + k
                 HangingChime(world: world, record: record, width: bellW)
@@ -150,7 +150,7 @@ struct WishView: View {
             }
         }
         .padding(.horizontal, 26).padding(.vertical, 18)
-        .glass(RoundedRectangle(cornerRadius: 26, style: .continuous), tint: Palette.smoke, amount: 0.45)
+        .glass(RoundedRectangle(cornerRadius: 26, style: .continuous), tint: .white, amount: 0.3)
         .frame(maxWidth: 440)
         .position(x: size.width / 2, y: wish.records.isEmpty ? size.height / 2 : max(chimeH + 60, size.height * 0.6))
     }
@@ -188,10 +188,10 @@ struct WishView: View {
             // left: preset chips
             // two columns, three rows: the five presets, then "write my own"
             let ids = WishPresets.ids + [WishPresets.writeOwn]
-            let chipW = chipH * 420 / 160
-            VStack(spacing: chipH * 0.08) {
+            let chipW = chipH * 2.35
+            VStack(spacing: chipH * 0.22) {
                 ForEach(0..<3, id: \.self) { row in
-                    HStack(spacing: chipW * 0.02) {
+                    HStack(spacing: chipW * 0.06) {
                         chip(ids[row * 2], height: chipH)
                         chip(ids[row * 2 + 1], height: chipH)
                     }
@@ -202,16 +202,26 @@ struct WishView: View {
             // right: release above rewrite
             VStack(spacing: btnH * 0.25) {
                 let w = world.rawValue, l = app.language.rawValue
-                WishButton(base: "wish_btn_release_\(w)_\(l)", enabled: wish.canRelease, height: btnH) { wish.release() }
+                Button { wish.release() } label: {
+                    Label(app.t("放飞", "Release"), systemImage: "arrow.up").frame(width: btnH * 1.7)
+                }
+                .buttonStyle(GlassButtonStyle(tint: world.accent, prominent: true))
+                .opacity(wish.canRelease ? 1 : 0.45)
+                .disabled(!wish.canRelease)
                     .modifier(ReleaseHop(trigger: wish.releasePulseAt))
-                WishButton(base: "wish_btn_rewrite_\(l)", enabled: wish.canRewrite, height: btnH) { wish.rewrite() }
+                Button { wish.rewrite() } label: {
+                    Label(app.t("重写", "Rewrite"), systemImage: "arrow.counterclockwise").frame(width: btnH * 1.7)
+                }
+                .buttonStyle(GlassButtonStyle())
+                .opacity(wish.canRewrite ? 1 : 0.45)
+                .disabled(!wish.canRewrite)
             }
-            .position(x: c.x + paper.width / 2 + 34 + btnH * 420 / 202 / 2, y: c.y - btnH * 0.3)
+            .position(x: c.x + paper.width / 2 + 34 + btnH * 1.7 / 2 + 22, y: c.y - btnH * 0.3)
 
-            let hintPoint = CGPoint(x: c.x + paper.width / 2 + 34 + btnH * 420 / 202 / 2, y: c.y + btnH * 1.35)
+            let hintPoint = CGPoint(x: c.x + paper.width / 2 + 34 + btnH * 1.7 / 2 + 22, y: c.y + btnH * 1.35)
             if !wish.canRelease && wish.cursor == nil {
                 Text(app.t("用手指在纸条上写字", "Write on the paper with your finger"))
-                    .font(.moodium(12, .medium)).foregroundStyle(.white.opacity(0.8))
+                    .font(.moodium(12, .medium)).foregroundStyle(Palette.textMuted)
                     .padding(.horizontal, 10).padding(.vertical, 5)
                     .glass(shadow: false)
                     .frame(maxWidth: 170)
@@ -219,7 +229,7 @@ struct WishView: View {
                     .allowsHitTesting(false)
             } else if wish.canRelease {
                 Text(app.t("写好了？点放飞，或者把手机往上托一下", "Done? Tap Release, or lift the phone up"))
-                    .font(.moodium(12, .medium)).foregroundStyle(.white.opacity(0.8))
+                    .font(.moodium(12, .medium)).foregroundStyle(Palette.textMuted)
                     .padding(.horizontal, 10).padding(.vertical, 5)
                     .glass(shadow: false)
                     .multilineTextAlignment(.center)
@@ -230,14 +240,27 @@ struct WishView: View {
         }
     }
 
+    /// Frosted pill per preset; the chosen one fills with the world colour.
     private func chip(_ id: String, height: CGFloat) -> some View {
-        let l = app.language.rawValue
         let selected = wish.presetId == id
-        let base = "wish_chip_\(id)_\(l)"
+        let own = id == WishPresets.writeOwn
+        let title = own ? app.t("自己写", "Write my own") : (WishPresets.find(id, app.language)?.chip ?? id)
         return Button {
-            if id == WishPresets.writeOwn { wish.writeOwn() } else { wish.pickPreset(id) }
-        } label: { EmptyView() }
-        .buttonStyle(ChipStyle(idle: selected ? "\(base)_selected_\(world.rawValue)" : "\(base)_idle", pressed: "\(base)_pressed", height: height))
+            if own { wish.writeOwn() } else { wish.pickPreset(id) }
+        } label: {
+            HStack(spacing: 5) {
+                Image(systemName: own ? "pencil" : selected ? "checkmark" : "sparkle")
+                    .font(.system(size: 11, weight: .bold))
+                Text(title).lineLimit(1).minimumScaleFactor(0.7)
+            }
+            .font(.moodium(14, .semibold))
+            .foregroundStyle(selected ? .white : Palette.ink)
+            .frame(width: height * 2.35, height: height * 0.72)
+            .background { if selected { Capsule().fill(world.accent).shadow(color: world.accent.opacity(0.45), radius: 8, y: 4) } }
+            .glass(shadow: !selected)
+        }
+        .buttonStyle(PressScaleStyle())
+        .animation(.spring(response: 0.3, dampingFraction: 0.75), value: selected)
     }
 
     // MARK: Flight

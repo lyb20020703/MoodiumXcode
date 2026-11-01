@@ -34,7 +34,7 @@ struct WorldSelectView: View {
                     SettingsPanel(isPresented: $showSettings).transition(.opacity)
                 }
             }
-            .foregroundStyle(.white)
+            .foregroundStyle(Palette.ink)
         }
         .onAppear {
             stage.resetEnter()
@@ -55,7 +55,7 @@ struct WorldSelectView: View {
         // Color.clear takes the screen size; the overlay can't grow past it.
         Color.clear.overlay {
           ZStack {
-            Palette.ink
+            Palette.roomTop
             ForEach(MoodWorld.allCases) { w in
                 if let image = Res.image(w.backdrop) {
                     Image(uiImage: image)
@@ -66,7 +66,7 @@ struct WorldSelectView: View {
                         .opacity(w == world ? 1 : 0)
                 }
             }
-            LinearGradient(colors: [Palette.ink.opacity(0.72), Palette.ink.opacity(0.42), Palette.ink.opacity(0.9)],
+            LinearGradient(colors: [Palette.roomTop.opacity(0.82), Palette.roomMid.opacity(0.35), Palette.roomBottom.opacity(0.85)],
                            startPoint: .top, endPoint: .bottom)
             RadialGradient(colors: [world.accent.opacity(0.22), .clear], center: .center, startRadius: 10, endRadius: 420)
           }
@@ -143,7 +143,7 @@ struct WorldSelectView: View {
                             Image(asset: "icon_star").resizable().frame(width: 11, height: 11)
                             Text(MoodCopy.text("tag.pick", app.language)).font(.moodium(12, .bold))
                         }
-                        .foregroundStyle(.white)
+                        .foregroundStyle(Palette.ink)
                         .padding(.horizontal, 9).padding(.vertical, 4)
                         .background(Capsule().fill(world.accent.opacity(0.85)))
                         .transition(.scale(scale: 0.8).combined(with: .opacity))
@@ -162,7 +162,7 @@ struct WorldSelectView: View {
 
                 HStack(spacing: 7) {
                     ForEach(0..<2, id: \.self) { i in
-                        Capsule().fill(.white.opacity(stage.selection == i ? 1 : 0.3))
+                        Capsule().fill(Palette.ink.opacity(stage.selection == i ? 0.85 : 0.2))
                             .frame(width: stage.selection == i ? 20 : 7, height: 7)
                     }
                 }

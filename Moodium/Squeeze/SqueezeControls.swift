@@ -45,7 +45,7 @@ struct ModeBar: View {
                 .frame(width: 42, height: 42)
                 Text(label)
                     .font(.moodium(10, selected ? .bold : .medium))
-                    .foregroundStyle(selected ? .white : Palette.textMuted)
+                    .foregroundStyle(selected ? Palette.ink : Palette.textMuted)
                     .lineLimit(1).minimumScaleFactor(0.7)
                     .frame(width: 52)
             }
@@ -67,7 +67,7 @@ struct ModeHelpCard: View {
     var body: some View {
         let thing = touchMode ? app.t("屏幕", "the screen") : app.t("底座", "the base")
         ZStack {
-            Color.black.opacity(0.35).ignoresSafeArea().onTapGesture { close() }
+            Palette.ink.opacity(0.18).ignoresSafeArea().onTapGesture { close() }
             VStack(alignment: .leading, spacing: 14) {
                 HStack {
                     Text(app.t("怎么玩", "How to play")).font(.moodium(22, .bold))
@@ -86,10 +86,10 @@ struct ModeHelpCard: View {
                            "When the energy is full, start a \(world == .candy ? "Candy Shower" : "Meadow Shower") at the bottom right."))
                     .font(.moodium(13)).foregroundStyle(Palette.textMuted)
             }
-            .foregroundStyle(.white)
+            .foregroundStyle(Palette.ink)
             .padding(22)
             .frame(width: 440)
-            .glass(RoundedRectangle(cornerRadius: 28, style: .continuous), tint: Palette.smoke, amount: 0.6)
+            .glass(RoundedRectangle(cornerRadius: 28, style: .continuous), tint: .white, amount: 0.35)
         }
     }
 

@@ -61,7 +61,7 @@ struct MoodCheckView: View {
                         .padding(.top, 14).padding(.trailing, 20)
                 }
             }
-            .foregroundStyle(.white)
+            .foregroundStyle(Palette.ink)
             .opacity(appeared ? 1 : 0)
             .scaleEffect(appeared ? 1 : 0.97)
         }
@@ -82,13 +82,9 @@ struct MoodCheckView: View {
 
     private var backdrop: some View {
         ZStack {
-            Palette.ink.opacity(0.82)
-            RadialGradient(colors: [mood.tint.opacity(touched ? 0.28 : 0.12), .clear], center: UnitPoint(x: 0.3, y: 0.5),
-                           startRadius: 20, endRadius: 520)
-                .animation(.easeInOut(duration: 0.5), value: mood)
-            TwinkleField(count: 26, color: .white.opacity(0.6))
+            MoodBackdrop(colors: [mood.tint, Palette.lavender, Palette.sky])
+            TwinkleField(count: 18)
         }
-        .background(.ultraThinMaterial)
         .ignoresSafeArea()
     }
 
@@ -100,12 +96,10 @@ struct MoodCheckView: View {
         let token = CGPoint(x: point.x * effective, y: -point.y * effective)
         return ZStack {
             // soft light in the mood colour
-            Image(asset: "glow_radial").resizable()
-                .frame(width: size * 1.6, height: size * 1.6)
-                .colorMultiply(mood.tint)
-                .opacity(touched ? 0.55 : 0.25)
-                .animation(.easeInOut(duration: 0.4), value: mood)
+            IridescentOrb(size: size * 1.3, tint: touched ? mood.tint : nil)
+                .opacity(0.8)
             Image(asset: "mood_plate_well").resizable().frame(width: size * 1.12, height: size * 1.12).offset(y: 8)
+                .opacity(0.25)
             Image(asset: "mood_plate_colorfield").resizable().frame(width: size, height: size)
                 .opacity(0.92)
             Image(asset: "zone_ring_dashed").resizable()
@@ -167,7 +161,7 @@ struct MoodCheckView: View {
     private func axisLabel(_ key: String) -> some View {
         Text(MoodCopy.text(key, app.language))
             .font(.moodium(12, .semibold))
-            .foregroundStyle(.white.opacity(0.62))
+            .foregroundStyle(Palette.textMuted)
             .fixedSize()
     }
 
@@ -185,9 +179,9 @@ struct MoodCheckView: View {
     private var question: some View {
         VStack(alignment: .leading, spacing: 14) {
             Text(MoodCopy.text("plate.kicker", app.language))
-                .font(.moodium(14, .semibold)).foregroundStyle(Palette.lavender)
+                .font(.moodium(14, .semibold)).foregroundStyle(Palette.lilac)
             Text(MoodCopy.text(isPost ? "plate.title.post" : "plate.title.pre", app.language))
-                .font(.moodium(26, .bold))
+                .font(.moodium(30, .heavy))
                 .fixedSize(horizontal: false, vertical: true)
 
             // current mood
@@ -294,7 +288,7 @@ struct MoodCheckView: View {
         let key = result == .better ? "compare.better" : result == .worse ? "compare.worse" : "compare.same"
         return VStack(alignment: .leading, spacing: 14) {
             Text(MoodCopy.text("compare.kicker", app.language, ["world": m.world.name(app.language)]))
-                .font(.moodium(14, .semibold)).foregroundStyle(Palette.lavender)
+                .font(.moodium(14, .semibold)).foregroundStyle(Palette.lilac)
             Text(MoodCopy.text(key, app.language))
                 .font(.moodium(23, .bold))
                 .fixedSize(horizontal: false, vertical: true)
