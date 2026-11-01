@@ -122,7 +122,7 @@ struct SqueezeView: View {
             }
             Spacer()
             VStack(spacing: 8) {
-                if let subtitle = director.subtitle {
+                if let subtitle = director.subtitle, !director.showCard {
                     HStack(spacing: 8) {
                         Image(asset: "moodi_happy").resizable().frame(width: 24, height: 24)
                         Text(subtitle).font(.moodium(16, .semibold))
@@ -163,46 +163,32 @@ struct SqueezeView: View {
             : app.t("轻压底座两侧，把 Moodi 挤出来", "Press either side of the base to squeeze Moodi out")
     }
 
+    /// After Moodi is out: a small centred card under Moodi with two choices.
     private var completionCard: some View {
-        VStack(spacing: 8) {
-            HStack {
-                Text(app.t("Moodi 得救啦！", "Moodi is free!")).font(.moodium(24, .bold))
-                Spacer(minLength: 8)
-                GlassIconButton(symbol: "xmark", size: 30) { director.dismissCard() }
+        VStack(spacing: 10) {
+            VStack(spacing: 3) {
+                Text(app.t("Moodi 得救啦！", "Moodi is free!")).font(.moodium(19, .bold))
+                Text(director.giftsGrown == 4
+                     ? app.t("4 件礼物都收齐啦 · 谢谢你温柔的按压", "All 4 gifts collected · thanks for every gentle squeeze")
+                     : app.t("谢谢你温柔的按压", "Thanks for every gentle squeeze"))
+                    .font(.moodium(13)).foregroundStyle(Palette.textMuted)
             }
-            Text(app.t("谢谢你每一次温柔的按压", "Thank you for every gentle squeeze"))
-                .font(.moodium(14)).foregroundStyle(Palette.textMuted)
-                .frame(maxWidth: .infinity, alignment: .leading)
-            if director.giftsGrown == 4 {
-                Label(app.t("4 件礼物都收齐啦", "All 4 gifts collected"), systemImage: "gift.fill")
-                    .font(.moodium(14, .semibold))
-                    .foregroundStyle(world.accent)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-            }
-            Button { wish() } label: {
-                Label(app.t("写一张心愿，挂成风铃", "Write a wish, hang it as a chime"), systemImage: "wind")
-                    .lineLimit(1).fixedSize()
-                    .frame(maxWidth: .infinity)
-            }
-            .buttonStyle(GlassButtonStyle(tint: world.accent, prominent: true))
             HStack(spacing: 10) {
+                Button { wish() } label: {
+                    Label(app.t("许个心愿", "Make a wish"), systemImage: "wind").lineLimit(1).fixedSize()
+                }
+                .buttonStyle(GlassButtonStyle(tint: world.accent, prominent: true, compact: true))
                 Button { director.replay() } label: {
-                    Label(app.t("再救一次", "Again"), systemImage: "arrow.counterclockwise").lineLimit(1).fixedSize()
+                    Label(app.t("再捏一次", "Squeeze again"), systemImage: "arrow.counterclockwise").lineLimit(1).fixedSize()
                 }
-                .buttonStyle(GlassButtonStyle())
-                Button { exit() } label: {
-                    Label(app.t("换个世界", "Other world"), systemImage: "globe.asia.australia.fill").lineLimit(1).fixedSize()
-                }
-                .buttonStyle(GlassButtonStyle())
+                .buttonStyle(GlassButtonStyle(compact: true))
             }
-            .padding(.top, 2)
         }
-        .padding(.horizontal, 22).padding(.vertical, 14)
-        .frame(width: 372)
-        .glass(RoundedRectangle(cornerRadius: 26, style: .continuous), tint: Palette.smoke, amount: 0.55)
-        // Top right, clear of Moodi in the middle and the dock below.
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
-        .padding(.top, 64).padding(.trailing, 22)
+        .padding(.horizontal, 22).padding(.vertical, 12)
+        .glass(RoundedRectangle(cornerRadius: 24, style: .continuous), tint: Palette.smoke, amount: 0.55)
+        // centred, below Moodi so the celebration stays in view
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
+        .padding(.bottom, 12)
     }
 
     // MARK: Touch fallback

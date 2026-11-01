@@ -55,13 +55,14 @@ extension View {
 struct GlassButtonStyle: ButtonStyle {
     var tint: Color? = nil
     var prominent = false
+    var compact = false
 
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .font(.moodium(17, .semibold))
+            .font(.moodium(compact ? 15 : 17, .semibold))
             .foregroundStyle(.white)
-            .padding(.horizontal, 22)
-            .padding(.vertical, 12)
+            .padding(.horizontal, compact ? 18 : 22)
+            .padding(.vertical, compact ? 9 : 12)
             .background {
                 if prominent, let tint {
                     Capsule().fill(LinearGradient(colors: [tint.opacity(0.95), tint.opacity(0.7)], startPoint: .top, endPoint: .bottom))
