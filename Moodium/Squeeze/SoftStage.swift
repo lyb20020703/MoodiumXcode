@@ -51,6 +51,9 @@ final class SoftStage: NSObject, SCNSceneRendererDelegate, SCNPhysicsContactDele
     private let props = SCNNode()
     private let walls = SCNNode()
     private var templates: [SCNNode] = []
+    let garden: GiftGarden
+    private var shower: Timer?
+    var isShowering: Bool { shower != nil }
 
     private let lock = NSLock()
     private var squash: Float = 0, squashVel: Float = 0
@@ -77,6 +80,7 @@ final class SoftStage: NSObject, SCNSceneRendererDelegate, SCNPhysicsContactDele
 
     init(world: MoodWorld) {
         self.world = world
+        garden = GiftGarden(world: world)
         super.init()
 
         let camera = SCNCamera()
@@ -118,6 +122,7 @@ final class SoftStage: NSObject, SCNSceneRendererDelegate, SCNPhysicsContactDele
         scene.rootNode.addChildNode(jellyBody)
         scene.rootNode.addChildNode(props)
         scene.rootNode.addChildNode(walls)
+        scene.rootNode.addChildNode(garden.root)
 
         loadModels()
     }
@@ -136,6 +141,7 @@ final class SoftStage: NSObject, SCNSceneRendererDelegate, SCNPhysicsContactDele
             let loadedRig = rig
             let jelly = ModelLoader.load(world.softModel, extent: 1, bottomPivot: true)
             let templates = SoftStage.makeTemplates(for: world)
+            self?.garden.load()
             DispatchQueue.main.async {
                 guard let self else { return }
                 self.templates = templates
@@ -240,6 +246,8 @@ final class SoftStage: NSObject, SCNSceneRendererDelegate, SCNPhysicsContactDele
         jellyBody.physicsBody = body
         jellyTopY = jellyBody.position.y + planeH / 2
 
+        garden.layout(halfW: halfW, halfH: halfH, cameraDistance: cameraDistance)
+
         walls.childNodes.forEach { $0.removeFromParentNode() }
         let t: Float = 1
         let specs: [(Float, Float, Float, Float)] = [
@@ -329,6 +337,43 @@ final class SoftStage: NSObject, SCNSceneRendererDelegate, SCNPhysicsContactDele
                 self.spawnProp(at: SIMD2(x, self.halfH - 0.4), velocity: SIMD2(Float.random(in: -1...1), Float.random(in: -2...0)))
             }
         }
+    }
+
+    /// Candy Shower / Meadow Shower: props keep falling from the top edge until stopped
+    /// (or for 40 s at most). Tilt the phone and the shower slides that way.
+    func startShower(onEnd: @escaping () -> Void) {
+        stopShower()
+        let started = Date()
+        shower = Timer.scheduledTimer(withTimeInterval: 0.11, repeats: true) { [weak self] timer in
+            guard let self else { timer.invalidate(); return }
+            if Date().timeIntervalSince(started) > 40 { self.stopShower(); onEnd(); return }
+            let x = Float.random(in: -0.94...0.94) * self.halfW
+            self.spawnProp(at: SIMD2(x, self.halfH - 0.35), velocity: SIMD2(Float.random(in: -0.8...0.8), Float.random(in: -2.5...0)))
+        }
+    }
+
+    func stopShower() {
+        shower?.invalidate()
+        shower = nil
+    }
+
+    /// Screen point (UIKit) of a world-space point.
+    func screenPoint(_ p: SCNVector3) -> CGPoint? {
+        guard let view else { return nil }
+        let s = view.projectPoint(p)
+        return CGPoint(x: CGFloat(s.x), y: CGFloat(s.y))
+    }
+
+    /// Is this screen point on the 3D Moodi?
+    func hitsMoodi(_ point: CGPoint) -> Bool {
+        guard let view else { return false }
+        var target: (center: SCNVector3, radius: Float)?
+        withRescue { target = $0.moodiTarget() }
+        guard let t = target else { return false }
+        let c = view.projectPoint(t.center)
+        let edge = view.projectPoint(SCNVector3(t.center.x + t.radius, t.center.y, t.center.z))
+        let r = max(36, CGFloat(abs(edge.x - c.x)))
+        return hypot(point.x - CGFloat(c.x), point.y - CGFloat(c.y)) < r
     }
 
     /// Shake / slosh: shove every prop.

@@ -56,12 +56,13 @@ final class AudioDirector {
         bgm = nil
     }
 
-    func pauseAll() { bgm?.pause(); voiceNode.pause() }
+    func pauseAll() { bgm?.pause(); voiceNode.pause(); stopBreath() }
     func resumeAll() { bgm?.play(); if engine.isRunning { voiceNode.play() } }
 
     private func duck(_ on: Bool) {
         guard !muted else { return }
         bgm?.setVolume(on ? bgmVolume * 0.45 : bgmVolume, fadeDuration: 0.3)
+        if let b = breathPlayer, b.isPlaying { b.setVolume(on ? breathVolume * 0.25 : breathVolume, fadeDuration: 0.3) }
     }
 
     // MARK: Effects
@@ -81,6 +82,32 @@ final class AudioDirector {
         player.currentTime = 0
         player.volume = volume
         player.play()
+    }
+
+    // MARK: Breath guide
+
+    private var breathPlayer: AVAudioPlayer?
+    private let breathVolume: Float = 0.32
+
+    /// Plays breath_inhale / breath_exhale once (BreathAudioGuide: short cross-fade,
+    /// quieter while Moodi is talking).
+    func breath(_ name: String) {
+        guard !muted, let url = Res.url(name, "wav") else { return }
+        let old = breathPlayer
+        old?.setVolume(0, fadeDuration: 0.1)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.12) { old?.stop() }
+        guard let player = try? AVAudioPlayer(contentsOf: url) else { return }
+        player.volume = 0
+        player.play()
+        player.setVolume(isSpeaking ? breathVolume * 0.25 : breathVolume, fadeDuration: 0.12)
+        breathPlayer = player
+    }
+
+    func stopBreath() {
+        breathPlayer?.setVolume(0, fadeDuration: 0.1)
+        let p = breathPlayer
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.12) { p?.stop() }
+        breathPlayer = nil
     }
 
     // MARK: Voice

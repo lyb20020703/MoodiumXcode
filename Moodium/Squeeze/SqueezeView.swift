@@ -9,6 +9,7 @@ struct SqueezeView: View {
     @Environment(\.scenePhase) private var scenePhase
     @StateObject private var director: SqueezeDirector
     @State private var showSettings = false
+    @State private var showHelp = false
 
     let world: MoodWorld
 
@@ -23,12 +24,25 @@ struct SqueezeView: View {
                 SqueezeCanvas(director: director)
                     .ignoresSafeArea()
                     .gesture(touchGesture(width: geo.size.width), including: director.touchMode ? .all : .subviews)
+                    .simultaneousGesture(SpatialTapGesture(coordinateSpace: .global).onEnded { director.tap(at: $0.location) })
 
-                EnergyRing(energy: director.energy, accent: world.accent, lastSqueeze: director.lastSqueeze)
-                    .scaleEffect(ringScale(geo.size))
-                    .position(x: geo.size.width / 2, y: geo.size.height * 0.19)
-                    .opacity(director.phase == .intro && director.energy == 0 ? 0.55 : 1)
-                    .animation(.easeOut(duration: 0.5), value: director.phase)
+                ZStack {
+                    if director.phase != .complete {
+                        switch director.mode {
+                        case .rhythm: RhythmGuide(director: director, accent: world.accent).transition(.opacity)
+                        case .breath: BreathGuide(director: director, accent: world.accent).transition(.opacity)
+                        case .free: EmptyView()
+                        }
+                    }
+                    EnergyRing(energy: director.energy, accent: world.accent, lastSqueeze: director.lastSqueeze)
+                        .opacity(director.phase == .intro && director.energy == 0 ? 0.55 : 1)
+                        .animation(.easeOut(duration: 0.5), value: director.phase)
+                }
+                .animation(.easeInOut(duration: 0.35), value: director.mode)
+                .scaleEffect(ringScale(geo.size))
+                .position(x: geo.size.width / 2, y: geo.size.height * 0.19)
+
+                toasts(geo.size)
 
                 hud
                     .padding(.horizontal, 18)
@@ -36,6 +50,7 @@ struct SqueezeView: View {
 
                 if director.showCard { completionCard.transition(.scale(scale: 0.9).combined(with: .opacity)) }
 
+                if showHelp { ModeHelpCard(world: world, touchMode: director.touchMode, isPresented: $showHelp).transition(.opacity) }
                 if showSettings { SettingsPanel(isPresented: $showSettings).transition(.opacity) }
             }
             .foregroundStyle(.white)
@@ -54,7 +69,39 @@ struct SqueezeView: View {
     }
 
     private func configureDirector() {
-        director.configure(language: app.language, hasBase: app.hasBase, sensitivity: app.sensitivity)
+        director.configure(language: app.language, hasBase: app.hasBase, sensitivity: app.sensitivity, mood: app.preSample?.mood)
+    }
+
+    private func exit() {
+        director.stopShower()
+        app.leaveWorld(director.metrics)
+    }
+
+    /// Mode switch, gift and "energy full" messages under the ring.
+    private func toasts(_ size: CGSize) -> some View {
+        VStack(spacing: 8) {
+            if director.modeToastAt != nil {
+                HStack(spacing: 6) {
+                    Image(asset: director.mode.icon).resizable().frame(width: 16, height: 16)
+                    Text(director.mode.toast(app.language)).font(.moodium(14, .bold))
+                }
+                .padding(.horizontal, 14).padding(.vertical, 7)
+                .glass(tint: world.accent, amount: 0.3)
+                .transition(.scale(scale: 0.85).combined(with: .opacity))
+            }
+            if let gift = director.giftToast {
+                HStack(spacing: 6) {
+                    Image(asset: "icon_star").resizable().frame(width: 14, height: 14)
+                    Text(app.t("第 \(gift.index + 1) 件 · \(gift.name)", "Gift \(gift.index + 1) · \(gift.name)"))
+                        .font(.moodium(14, .bold))
+                }
+                .padding(.horizontal, 14).padding(.vertical, 7)
+                .glass(tint: world.accent, amount: 0.35)
+                .transition(.scale(scale: 0.85).combined(with: .opacity))
+            }
+        }
+        .position(x: size.width / 2, y: size.height * 0.19 + 96 * ringScale(size) + 22)
+        .allowsHitTesting(false)
     }
 
     private func ringScale(_ size: CGSize) -> CGFloat {
@@ -66,7 +113,7 @@ struct SqueezeView: View {
     private var hud: some View {
         VStack {
             HStack(spacing: 10) {
-                GlassIconButton(symbol: "chevron.left") { app.backToSelect() }
+                GlassIconButton(symbol: "chevron.left") { exit() }
                 HStack(spacing: 6) {
                     Image(asset: world.icon).resizable().scaledToFit().frame(width: 22, height: 22)
                     Text(world.name(app.language)).font(.moodium(15, .semibold))
@@ -78,6 +125,14 @@ struct SqueezeView: View {
                 GlassIconButton(symbol: "gearshape.fill") { withAnimation { showSettings = true } }
             }
             Spacer()
+            ZStack(alignment: .bottom) {
+                HStack(alignment: .bottom) {
+                    ModeBar(director: director, showHelp: $showHelp)
+                        .opacity(director.phase == .complete ? 0.4 : 1)
+                        .disabled(director.phase == .complete)
+                    Spacer()
+                    WorldDock(director: director) { exit() }
+                }
             VStack(spacing: 8) {
                 if let subtitle = director.subtitle {
                     HStack(spacing: 8) {
@@ -89,7 +144,14 @@ struct SqueezeView: View {
                     .transition(.opacity.combined(with: .move(edge: .bottom)))
                     .id(subtitle)
                 }
-                if director.showHint {
+                if let guide = director.guide, director.subtitle == nil {
+                    Text(guide)
+                        .font(.moodium(14, .semibold))
+                        .padding(.horizontal, 14).padding(.vertical, 8)
+                        .glass(shadow: false)
+                        .transition(.opacity)
+                        .id(guide)
+                } else if director.showHint {
                     Label(hintText, systemImage: director.touchMode ? "hand.tap.fill" : "arrow.left.and.right")
                         .font(.moodium(14, .medium))
                         .foregroundStyle(Palette.textMuted)
@@ -99,7 +161,9 @@ struct SqueezeView: View {
                         .transition(.opacity)
                 }
             }
-            .frame(maxWidth: 520)
+            .frame(maxWidth: 360)
+            .padding(.bottom, 4)
+            }
         }
     }
 
@@ -113,31 +177,44 @@ struct SqueezeView: View {
     }
 
     private var completionCard: some View {
-        ZStack {
-            LinearGradient(colors: [.clear, .black.opacity(0.35)], startPoint: .center, endPoint: .trailing).ignoresSafeArea()
-            VStack(spacing: 14) {
-                Text(app.t("Moodi 得救啦！", "Moodi is free!")).font(.moodium(26, .bold))
-                Text(app.t("谢谢你每一次温柔的按压", "Thank you for every gentle squeeze"))
-                    .font(.moodium(15)).foregroundStyle(Palette.textMuted)
-                HStack(spacing: 12) {
-                    Button { director.replay() } label: {
-                        Label(app.t("再救一次", "Again"), systemImage: "arrow.counterclockwise")
-                    }
-                    .buttonStyle(GlassButtonStyle(tint: world.accent, prominent: true))
-                    Button { app.backToSelect() } label: {
-                        Label(app.t("换个世界", "Other world"), systemImage: "globe.asia.australia.fill")
-                    }
-                    .buttonStyle(GlassButtonStyle())
-                }
-                .padding(.top, 4)
+        VStack(spacing: 10) {
+            HStack {
+                Text(app.t("Moodi 得救啦！", "Moodi is free!")).font(.moodium(24, .bold))
+                Spacer(minLength: 8)
+                GlassIconButton(symbol: "xmark", size: 30) { director.dismissCard() }
             }
-            .padding(.horizontal, 30).padding(.vertical, 24)
-            .glass(RoundedRectangle(cornerRadius: 30, style: .continuous), tint: Palette.smoke, amount: 0.55)
-            // Sit to the side so Moodi, floating in the middle, stays in view.
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .trailing)
-            .padding(.trailing, 28)
-            .offset(y: 30)
+            Text(app.t("谢谢你每一次温柔的按压", "Thank you for every gentle squeeze"))
+                .font(.moodium(14)).foregroundStyle(Palette.textMuted)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            if director.giftsGrown == 4 {
+                Label(app.t("4 件礼物都收齐啦", "All 4 gifts collected"), systemImage: "gift.fill")
+                    .font(.moodium(14, .semibold))
+                    .foregroundStyle(world.accent)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            Label(app.t("能量满啦，右下角可以下一场\(world == .candy ? "糖果雨" : "花草雨")",
+                        "Energy full — try the \(world == .candy ? "Candy Shower" : "Meadow Shower") below"),
+                  systemImage: "sparkles")
+                .font(.moodium(13)).foregroundStyle(Palette.textMuted)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            HStack(spacing: 10) {
+                Button { director.replay() } label: {
+                    Label(app.t("再救一次", "Again"), systemImage: "arrow.counterclockwise").lineLimit(1).fixedSize()
+                }
+                .buttonStyle(GlassButtonStyle(tint: world.accent, prominent: true))
+                Button { exit() } label: {
+                    Label(app.t("换个世界", "Other world"), systemImage: "globe.asia.australia.fill").lineLimit(1).fixedSize()
+                }
+                .buttonStyle(GlassButtonStyle())
+            }
+            .padding(.top, 2)
         }
+        .padding(.horizontal, 22).padding(.vertical, 16)
+        .frame(width: 372)
+        .glass(RoundedRectangle(cornerRadius: 26, style: .continuous), tint: Palette.smoke, amount: 0.55)
+        // Top right, clear of Moodi in the middle and the dock below.
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
+        .padding(.top, 70).padding(.trailing, 22)
     }
 
     // MARK: Touch fallback

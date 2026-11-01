@@ -8,6 +8,9 @@ struct WorldSelectView: View {
     @State private var showSettings = false
     @State private var dragging = false
     @State private var entering = false
+    @State private var inviteLine: String?
+    @State private var lastInvite: [MoodWorld: Date] = [:]
+    @State private var inviteWork: DispatchWorkItem?
 
     private var world: MoodWorld { .at(stage.selection) }
 
@@ -22,7 +25,7 @@ struct WorldSelectView: View {
 
                 placeholders(size: geo.size)
 
-                MoodiPeek(world: world, line: world.moodiLine(app.language), visible: !dragging && !entering)
+                MoodiPeek(world: world, line: inviteLine ?? world.moodiLine(app.language), visible: !dragging && !entering)
                     .position(x: geo.size.width * 0.5 + min(geo.size.width * 0.17, 190), y: geo.size.height * 0.27)
 
                 overlay(size: geo.size)
@@ -37,7 +40,12 @@ struct WorldSelectView: View {
             stage.resetEnter()
             stage.select(app.lastWorld.index)
             entering = false
+            scheduleInvite()
         }
+        .onDisappear { inviteWork?.cancel(); AudioDirector.shared.stopVoice() }
+        .onChange(of: stage.selection) { _, _ in scheduleInvite() }
+        .onChange(of: app.lastWorld) { _, w in if stage.selection != w.index { stage.select(w.index) } }
+        .onChange(of: app.moodCheck) { _, request in if request == nil { scheduleInvite(force: true) } }
     }
 
     // MARK: Pieces
@@ -94,6 +102,7 @@ struct WorldSelectView: View {
                         .font(.moodium(28, .bold))
                     Text(app.t("左右滑动，挑一个想去的小世界", "Swipe to pick a little world"))
                         .font(.moodium(14)).foregroundStyle(Palette.textMuted)
+                    moodChip.padding(.top, 6)
                 }
                 Spacer()
                 GlassIconButton(symbol: "gearshape.fill") { withAnimation { showSettings = true } }
@@ -115,6 +124,16 @@ struct WorldSelectView: View {
 
             VStack(spacing: 10) {
                 HStack(spacing: 8) {
+                    if app.recommendedWorld == world {
+                        HStack(spacing: 4) {
+                            Image(asset: "icon_star").resizable().frame(width: 11, height: 11)
+                            Text(MoodCopy.text("tag.pick", app.language)).font(.moodium(12, .bold))
+                        }
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 9).padding(.vertical, 4)
+                        .background(Capsule().fill(world.accent.opacity(0.85)))
+                        .transition(.scale(scale: 0.8).combined(with: .opacity))
+                    }
                     Image(asset: world.icon).resizable().scaledToFit().frame(width: 26, height: 26)
                     Text(world.name(app.language)).font(.moodium(20, .bold))
                     Text("·").foregroundStyle(Palette.textMuted)
@@ -143,6 +162,47 @@ struct WorldSelectView: View {
         .padding(.horizontal, 22)
     }
 
+    /// "不知道选哪个？测测心情" until the mood is checked, then today's mood (tap to check again).
+    private var moodChip: some View {
+        Button { app.moodCheck = .pre } label: {
+            HStack(spacing: 7) {
+                if let sample = app.preSample {
+                    Image(asset: sample.mood.moodiFace).resizable().scaledToFit().frame(width: 22)
+                    Text(MoodCopy.text("rec.today", app.language, ["mood": sample.mood.name(app.language)]))
+                    Text("·").foregroundStyle(Palette.textMuted)
+                    Text(MoodCopy.text("rec.short.\(sample.mood.rawValue)", app.language)).foregroundStyle(Palette.textMuted)
+                } else {
+                    Image(asset: "icon_mood_neutral").resizable().frame(width: 17, height: 17)
+                    Text(MoodCopy.text("prompt.entry", app.language))
+                }
+            }
+            .font(.moodium(13, .semibold))
+            .padding(.horizontal, 12).padding(.vertical, 7)
+            .glass(tint: app.preSample?.mood.tint, amount: 0.25, shadow: false)
+        }
+        .buttonStyle(PressScaleStyle())
+    }
+
+    /// Moodi invites you into the world in view (S1c / S1n, or S2 for the recommended one),
+    /// at most once every 20 s per world, after the carousel settles.
+    private func scheduleInvite(force: Bool = false) {
+        inviteWork?.cancel()
+        let w = world
+        let work = DispatchWorkItem {
+            guard app.moodCheck == nil, app.stage == .select, !entering, stage.selection == w.index else { return }
+            if !force, let last = lastInvite[w], Date().timeIntervalSince(last) < 20 { return }
+            lastInvite[w] = Date()
+            let id = app.recommendedWorld == w ? "S2" : (w == .candy ? "S1c" : "S1n")
+            let duration = AudioDirector.shared.voice("moodi_vo_\(id)_\(app.language.rawValue)", clarity: 1)
+            withAnimation(.easeOut(duration: 0.25)) { inviteLine = VoiceLines.text(id, app.language) }
+            DispatchQueue.main.asyncAfter(deadline: .now() + max(2.5, duration + 1.2)) {
+                if inviteLine == VoiceLines.text(id, app.language) { withAnimation { inviteLine = nil } }
+            }
+        }
+        inviteWork = work
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.7, execute: work)
+    }
+
     private func carouselDrag(width: CGFloat) -> some Gesture {
         DragGesture(minimumDistance: 8)
             .onChanged { value in
@@ -160,6 +220,8 @@ struct WorldSelectView: View {
 
     private func enter() {
         entering = true
+        inviteWork?.cancel()
+        AudioDirector.shared.stopVoice()
         stage.playEnter(stage.selection)
         AudioDirector.shared.sfx("sfx_portal", volume: 0.6)
         let chosen = world

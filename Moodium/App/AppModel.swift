@@ -28,6 +28,13 @@ final class AppModel: ObservableObject {
     @Published var stage: Stage = .opening
     @Published var flash: Color?
 
+    // Mood check (MoodCheckController): asked once before choosing a world, and again
+    // after leaving one, so the two answers can be compared.
+    @Published var moodCheck: MoodCheckRequest?
+    @Published var preSample: MoodSample?
+    /// Set when the pre check asked for a recommendation; the carousel tags that world.
+    var recommendedWorld: MoodWorld? { preSample?.mood.recommendedWorld }
+
     @Published var language: Language { didSet { defaults.set(language.rawValue, forKey: Key.language) } }
     @Published var hasBase: Bool { didSet { defaults.set(hasBase, forKey: Key.hasBase) } }
     @Published var sensitivity: Sensitivity { didSet { defaults.set(sensitivity.rawValue, forKey: Key.sensitivity) } }
@@ -60,4 +67,24 @@ final class AppModel: ObservableObject {
     }
 
     func backToSelect() { stage = .select }
+
+    /// Leaving a world: ask "and now?" if the mood was checked before, otherwise just go back.
+    func leaveWorld(_ metrics: MoodVisitMetrics) {
+        stage = .select
+        if preSample != nil, metrics.squeezes > 0 {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { self.moodCheck = .post(metrics) }
+        } else {
+            MoodLog.append(MoodVisit(world: metrics.world.rawValue, before: preSample, after: nil,
+                                     seconds: metrics.seconds, squeezes: metrics.squeezes, mode: metrics.mode.rawValue))
+        }
+    }
+
+    func recordPostSample(_ sample: MoodSample, metrics: MoodVisitMetrics) {
+        MoodLog.append(MoodVisit(world: metrics.world.rawValue, before: preSample, after: sample,
+                                 seconds: metrics.seconds, squeezes: metrics.squeezes, mode: metrics.mode.rawValue))
+        // The latest answer becomes the "before" of the next visit.
+        preSample = sample
+    }
+
+    func closeMoodCheck() { moodCheck = nil }
 }

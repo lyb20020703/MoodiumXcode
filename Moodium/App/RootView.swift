@@ -14,6 +14,9 @@ struct RootView: View {
             case .squeeze(let world):
                 SqueezeView(world: world).id(world).transition(.opacity)
             }
+            if let request = app.moodCheck {
+                MoodCheckView(request: request).transition(.opacity).zIndex(5)
+            }
             // Soft colour flash used when stepping into a world.
             if let flash = app.flash {
                 flash.ignoresSafeArea().allowsHitTesting(false).transition(.opacity)
@@ -21,5 +24,6 @@ struct RootView: View {
         }
         .animation(.easeInOut(duration: 0.55), value: app.stage)
         .animation(.easeInOut(duration: 0.45), value: app.flash)
+        .animation(.easeInOut(duration: 0.35), value: app.moodCheck)
     }
 }

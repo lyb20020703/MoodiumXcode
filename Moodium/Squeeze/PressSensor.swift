@@ -18,6 +18,9 @@ final class PressSensor {
     /// Gravity in screen coordinates (x right, y up, in g) and left/right rock rate (rad/s).
     var onMotion: ((SIMD2<Double>, Double) -> Void)?
     var onShake: (() -> Void)?
+    /// The base is being held down (the phone stays tipped) / let go. Used by breath mode.
+    var onHold: ((Bool) -> Void)?
+    private(set) var isHeld = false
 
     var sensitivity: Sensitivity = .normal
     var pulsesEnabled = true
@@ -39,6 +42,13 @@ final class PressSensor {
     private var lastShake: TimeInterval = 0
     private var lastMotionSend: TimeInterval = 0
 
+    // Hold detection: how far gravity has tipped away from where the phone rests.
+    private var restGravity: SIMD3<Double>?
+    private var tipSince: TimeInterval?
+    private var settleSince: TimeInterval?
+    private var heldSince: TimeInterval = 0
+    private var releasedAt: TimeInterval = 0
+
     func start() {
         guard manager.isDeviceMotionAvailable, !manager.isDeviceMotionActive else { return }
         refreshOrientation()
@@ -52,6 +62,8 @@ final class PressSensor {
     func stop() {
         manager.stopDeviceMotionUpdates()
         state = .idle
+        if isHeld { isHeld = false; onHold?(false) }
+        restGravity = nil
     }
 
     /// Ignore motion briefly, e.g. while our own haptics shake the phone.
@@ -101,10 +113,13 @@ final class PressSensor {
             if now - lastShake > 0.6 { lastShake = now; onShake?() }
             suppress(for: 0.5)
             state = .idle
+            restGravity = nil
+            if isHeld { isHeld = false; releasedAt = now; onHold?(false) }
             return
         }
 
         let k = sensitivity.thresholdScale
+        trackHold(simd_normalize(g), now: now, k: k)
         let threshold = max(0.32 * k, noiseFloor * 4.5 * k)
 
         switch state {
@@ -128,12 +143,51 @@ final class PressSensor {
                 let intensity = min(1, max(0.2, (peak - threshold) / (2.2 * k) + 0.2))
                 lastPulse = now
                 state = .cooldown
-                onPulse?(Pulse(intensity: intensity, side: peakSide))
+                // The pillow springing back after a long hold is a release, not a new squeeze.
+                let isRelease = (isHeld && now - heldSince > 0.35) || now - releasedAt < 0.3
+                if !isRelease { onPulse?(Pulse(intensity: intensity, side: peakSide)) }
             }
         case .cooldown:
             // Let the rebound of the pillow settle before listening again.
             if magnitude < threshold * 0.7 && now - lastPulse > 0.22 { state = .idle }
         }
+    }
+
+    /// Pressing the base tips the phone and keeps it tipped while the hand stays down.
+    /// Gravity drifting more than ~1.8° from the resting direction for 0.1 s is a hold; back
+    /// within ~0.9° for 0.12 s is a release. The resting direction follows slowly while idle.
+    private func trackHold(_ g: SIMD3<Double>, now: TimeInterval, k: Double) {
+        guard pulsesEnabled else { return }
+        guard let rest = restGravity else { restGravity = g; return }
+        let angle = acos(max(-1, min(1, simd_dot(g, rest)))) * 180 / .pi
+        let on = 1.8 * k, off = 0.9 * k
+        if !isHeld {
+            if angle > on, now >= suppressUntil {
+                if tipSince == nil { tipSince = now }
+                if now - tipSince! >= 0.1 {
+                    isHeld = true; heldSince = now; settleSince = nil
+                    onHold?(true)
+                }
+            } else {
+                tipSince = nil
+                // follow slow drift (≈2.5 s) only while resting
+                restGravity = simd_normalize(rest + (g - rest) * 0.004)
+            }
+        } else {
+            if angle < off {
+                if settleSince == nil { settleSince = now }
+                if now - settleSince! >= 0.12 { release(now) }
+            } else {
+                settleSince = nil
+            }
+            // Someone moved the phone or leaned on it for ages: take this as the new rest.
+            if now - heldSince > 15 { restGravity = g; release(now) }
+        }
+    }
+
+    private func release(_ now: TimeInterval) {
+        isHeld = false; tipSince = nil; settleSince = nil; releasedAt = now
+        onHold?(false)
     }
 
     private func trackNoise(_ magnitude: Double) {

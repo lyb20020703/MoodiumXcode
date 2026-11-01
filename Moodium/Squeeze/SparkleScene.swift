@@ -154,8 +154,8 @@ final class SparkleScene: SKScene, SKPhysicsContactDelegate {
     }
 
     /// A gift milestone (20 / 50 / 80 %): a bigger double ring and a shower of stars.
-    func giftBurst() {
-        let origin = mouthPoint ?? CGPoint(x: jellyRect.midX, y: jellyRect.maxY)
+    func giftBurst(at uiPoint: CGPoint? = nil) {
+        let origin = uiPoint.map { toScene($0) } ?? mouthPoint ?? CGPoint(x: jellyRect.midX, y: jellyRect.maxY)
         flash(at: origin, texture: "fx_splash", from: 0.3, to: 2.2, duration: 0.7, alpha: 0.9, color: accent)
         run(.wait(forDuration: 0.12)) { [weak self] in
             guard let self else { return }
@@ -503,6 +503,40 @@ final class SparkleScene: SKScene, SKPhysicsContactDelegate {
                                         .scale(to: 1, duration: 0.14)])
         moodi.run(wiggle, withKey: "wiggle")
         moodiShadow.run(.fadeAlpha(to: CGFloat(0.25 + 0.5 * e), duration: 0.3))
+    }
+
+    /// Is this UIKit point on the 2D Moodi?
+    func spriteMoodiHit(_ uiPoint: CGPoint) -> Bool {
+        guard spriteMoodi, moodi.alpha > 0.2, moodi.parent != nil else { return false }
+        let p = toScene(uiPoint)
+        return hypot(p.x - moodi.position.x, p.y - moodi.position.y) < max(40, moodi.size.width * 0.6)
+    }
+
+    /// A finger poked the 2D Moodi: squish, giggle and a few sparkles.
+    func moodiPoke() {
+        guard spriteMoodi else { return }
+        let squish = SKAction.sequence([.scaleX(to: 1.25, y: 0.78, duration: 0.08), .scaleX(to: 0.9, y: 1.14, duration: 0.1),
+                                        .scaleX(to: 1.05, y: 0.96, duration: 0.1), .scale(to: 1, duration: 0.12)])
+        moodi.run(squish, withKey: "poke")
+        flash(at: moodi.position, texture: "fx_splash", from: 0.2, to: 1.1, duration: 0.4, alpha: 0.7, color: accent)
+    }
+
+    /// Little hearts / sparkles over the 3D Moodi when poked (UIKit point).
+    func pokeSparkle(at uiPoint: CGPoint) {
+        let p = toScene(uiPoint)
+        flash(at: p, texture: "fx_splash", from: 0.2, to: 1.0, duration: 0.4, alpha: 0.6, color: accent)
+        let e = emitter(world == .candy ? "fx_star" : "fx_twinkle", count: 9)
+        e.position = p
+        e.emissionAngle = .pi / 2
+        e.emissionAngleRange = .pi * 0.9
+        e.particleSpeed = 220
+        e.particleSpeedRange = 80
+        e.particleLifetime = 0.9
+        e.particleScale = 0.05
+        e.particleAlphaSpeed = -1
+        e.yAcceleration = -260
+        e.particleColorSequence = SKKeyframeSequence(keyframeValues: [UIColor.white, accent], times: [0, 0.6])
+        fire(e, lifetime: 1.2)
     }
 
     /// The pillow pops and Moodi jumps out, spins and floats in front of you.

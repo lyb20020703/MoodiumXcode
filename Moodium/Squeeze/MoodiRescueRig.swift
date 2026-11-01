@@ -84,6 +84,7 @@ final class BoneRig {
     }
 
     var missingBones: [String] { zip(data.bones, nodes).filter { $1 == nil }.map { $0.0 } }
+    func node(_ name: String) -> SCNNode? { index[name].flatMap { nodes[$0] } }
     func boneIndex(_ name: String) -> Int? { index[name] }
     func frameCount(_ clip: String) -> Int { data.clips[clip]?.frames.count ?? 0 }
     func duration(_ clip: String) -> Float { Float(max(0, frameCount(clip) - 1)) / fps }
@@ -219,6 +220,7 @@ final class MoodiRescueRig {
     private var blinks: [Float] = []
     private var fly: (from: SIMD3<Float>, fly: Float, wave: Float, drop: Float) = (.zero, 0.9, 0.8, 0.35)
     private var lastMoodiPose: RigPose = []
+    private var touchedAt: Float?
 
     private let moodiRig: BoneRig
     private let mouthRig: BoneRig
@@ -270,6 +272,7 @@ final class MoodiRescueRig {
     /// Empty opening, Moodi hidden. Also the state for "again".
     func reset() {
         phase = .waiting
+        touchedAt = nil
         progress = 0; target = 0; velocity = 0
         spring = PressSpring(); pressS = 0; pulseLeft = 0; heldByTouch = false
         blinks.removeAll()
@@ -320,6 +323,26 @@ final class MoodiRescueRig {
     /// Quick blink (0.1 s shut, 0.1 s open). `count` 2 = the "I can see the light" double blink.
     func blink(count: Int = 1, delay: Float = 0) {
         for n in 0..<count { blinks.append(clock + delay + 0.3 * Float(n)) }
+    }
+
+    /// A finger poked Moodi: play Touched (≈0.9 s) over whatever Moodi is doing
+    /// (MoodiCompanionAnimator.PollHandTouch). Returns false if Moodi can't be poked now.
+    @discardableResult
+    func touch() -> Bool {
+        guard [.peeking, .emerging, .free].contains(phase) else { return false }
+        if let t = touchedAt, clock - t < moodiRig.duration("Touched") * 0.6 { return false }
+        touchedAt = clock
+        blink(delay: 0.05)
+        return true
+    }
+
+    /// Moodi's upper body in world space, and roughly how big Moodi is (world units), for tap hit tests.
+    func moodiTarget() -> (center: SCNVector3, radius: Float)? {
+        guard !moodiNode.isHidden, let body = moodiRig.node("Body_Upper") ?? moodiRig.node("Body") else { return nil }
+        let c = body.convertPosition(SCNVector3Zero, to: nil)
+        let top = moodiRig.node("Sprout_Stem")?.convertPosition(SCNVector3Zero, to: nil) ?? c
+        let r = max(simd_distance(SIMD3<Float>(c), SIMD3<Float>(top)) * 1.4, 0.15)
+        return (c, r)
     }
 
     /// Skip the remaining smoothing and pop now (the 1.2 s fallback after 100 %).
@@ -454,6 +477,13 @@ final class MoodiRescueRig {
 
     private func setMoodi(_ pose: RigPose, keep: Bool = true) {
         var p = pose
+        if let t0 = touchedAt {
+            let d = clock - t0, len = moodiRig.duration("Touched")
+            if d >= len { touchedAt = nil } else {
+                let w = min(1, d / 0.1) * min(1, (len - d) / 0.15)
+                p = mixPose(p, moodiRig.sample("Touched", time: d, loop: false), w)
+            }
+        }
         let b = blinkAmount()
         if b < 1 {
             for (k, axis) in eyes { p[k].s[axis] *= b }

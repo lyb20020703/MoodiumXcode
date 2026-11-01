@@ -125,5 +125,7 @@ struct OpeningView: View {
         app.hasBase = has
         AudioDirector.shared.sfx("sfx_portal", volume: 0.5)
         app.stage = .select
+        // Moodi asks how you feel before you pick a world (skippable).
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) { app.moodCheck = .pre }
     }
 }
