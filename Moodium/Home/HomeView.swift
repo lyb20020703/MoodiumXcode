@@ -146,28 +146,32 @@ struct HomeView: View {
         return VStack(spacing: 12) {
             // primary: the squeeze worlds
             Button { AudioDirector.shared.sfx("sfx_portal", volume: 0.45); app.stage = .select } label: {
-                HStack(spacing: 14) {
+                HStack(spacing: 12) {
+                    // the two world islands, as seen in the world select carousel
                     ZStack {
-                        Image(asset: MoodWorld.nature.icon).resizable().scaledToFit().frame(width: 44)
-                            .offset(x: 16, y: 10)
-                        Image(asset: MoodWorld.candy.icon).resizable().scaledToFit().frame(width: 50)
-                            .offset(x: -10, y: -6)
+                        Ellipse().fill(RadialGradient(colors: [Palette.lavender.opacity(0.4), .clear], center: .center, startRadius: 2, endRadius: 70))
+                            .frame(width: 150, height: 64).offset(y: 22)
+                        Image(asset: "island_thumb_nature").resizable().scaledToFit().frame(width: 78)
+                            .offset(x: 34, y: -8)
+                            .shadow(color: .black.opacity(0.3), radius: 5, y: 3)
+                        Image(asset: "island_thumb_candy").resizable().scaledToFit().frame(width: 82)
+                            .offset(x: -26, y: 8)
+                            .shadow(color: .black.opacity(0.35), radius: 6, y: 4)
                     }
-                    .frame(width: 78, height: 70)
+                    .frame(width: 140, height: 92)
                     VStack(alignment: .leading, spacing: 4) {
                         Text(app.t("捏捏小世界", "Squeeze worlds")).font(.moodium(22, .bold))
                         Text(app.t("糖果世界 · 自然世界\n把掉进枕头的 Moodi 挤出来", "Candy World · Nature World\nSqueeze Moodi out of the pillow"))
-                            .font(.moodium(13)).foregroundStyle(.white.opacity(0.85))
+                            .font(.moodium(13)).foregroundStyle(Palette.textMuted)
                             .fixedSize(horizontal: false, vertical: true)
                     }
                     Spacer(minLength: 0)
-                    Image(systemName: "chevron.right").font(.system(size: 18, weight: .bold))
+                    Circle().fill(Palette.lavender.opacity(0.9)).frame(width: 36, height: 36)
+                        .overlay(Image(systemName: "chevron.right").font(.system(size: 15, weight: .bold)).foregroundStyle(.white))
+                        .shadow(color: Palette.lavender.opacity(0.5), radius: 8, y: 3)
                 }
-                .padding(.horizontal, 18).padding(.vertical, compact ? 14 : 18)
-                .background(RoundedRectangle(cornerRadius: 26, style: .continuous)
-                    .fill(LinearGradient(colors: [Palette.candy.opacity(0.75), Palette.lavender.opacity(0.55), Palette.nature.opacity(0.55)],
-                                         startPoint: .topLeading, endPoint: .bottomTrailing)))
-                .glass(RoundedRectangle(cornerRadius: 26, style: .continuous))
+                .padding(.leading, 10).padding(.trailing, 18).padding(.vertical, compact ? 10 : 14)
+                .glass(RoundedRectangle(cornerRadius: 26, style: .continuous), tint: Palette.lavender, amount: 0.14)
             }
             .buttonStyle(PressScaleStyle())
 
