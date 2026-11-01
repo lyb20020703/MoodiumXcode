@@ -7,7 +7,7 @@ struct HomeView: View {
     @EnvironmentObject private var app: AppModel
     @State private var showSettings = false
     @State private var showJournal = false
-    @State private var poke = false
+    @State private var figure = MoodiFigureModel()
     @State private var appeared = false
     @State private var wishCount = 0
     @State private var visits: [MoodVisit] = []
@@ -99,24 +99,17 @@ struct HomeView: View {
             .padding(.horizontal, 18).padding(.vertical, 10)
             .glass(RoundedRectangle(cornerRadius: 20, style: .continuous), tint: app.preSample?.mood.tint, amount: 0.18)
 
-            TimelineView(.animation(minimumInterval: 1.0 / 30)) { context in
-                let t = context.date.timeIntervalSinceReferenceDate
-                let breathe = 1 + 0.035 * sin(t * 1.9)
-                ZStack {
-                    Image(asset: "glow_radial").resizable()
-                        .frame(width: size * 1.7, height: size * 1.7)
-                        .colorMultiply(app.preSample?.mood.tint ?? Palette.lavender)
-                        .opacity(0.55)
-                    Image(asset: app.preSample?.mood.moodiFace ?? "moodi_happy").resizable().scaledToFit()
-                        .frame(width: size)
-                        .scaleEffect(x: poke ? 1.18 : breathe, y: poke ? 0.84 : 2 - breathe)
-                        .offset(y: sin(t * 1.9) * 6)
-                        .shadow(color: .black.opacity(0.25), radius: 12, y: 10)
-                }
+            // the 3D Moodi (same model and animation as the rescue); tap to poke
+            ZStack {
+                Image(asset: "glow_radial").resizable()
+                    .frame(width: size * 1.8, height: size * 1.8)
+                    .colorMultiply(app.preSample?.mood.tint ?? Palette.lavender)
+                    .opacity(0.55)
+                    .allowsHitTesting(false)
+                MoodiFigure(model: figure) { pokeMoodi() }
+                    .frame(width: size * 1.5, height: size * 1.35)
             }
-            .frame(height: size * 1.05)
-            .contentShape(Circle())
-            .onTapGesture { pokeMoodi() }
+            .frame(height: size * 1.2)
 
             Button { app.moodCheck = .pre } label: {
                 HStack(spacing: 7) {
@@ -141,10 +134,6 @@ struct HomeView: View {
     private func pokeMoodi() {
         AudioDirector.shared.sfx("sfx_hop", volume: 0.5)
         UIImpactFeedbackGenerator(style: .soft).impactOccurred()
-        withAnimation(.spring(response: 0.12, dampingFraction: 0.5)) { poke = true }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.14) {
-            withAnimation(.spring(response: 0.35, dampingFraction: 0.45)) { poke = false }
-        }
         if !AudioDirector.shared.isSpeaking, Bool.random() {
             AudioDirector.shared.voice("moodi_vo_K8a_\(app.language.rawValue)", clarity: 1)
         }

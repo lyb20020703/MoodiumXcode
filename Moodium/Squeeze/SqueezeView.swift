@@ -102,16 +102,6 @@ struct SqueezeView: View {
                 .glass(tint: world.accent, amount: 0.3)
                 .transition(.scale(scale: 0.85).combined(with: .opacity))
             }
-            if let gift = director.giftToast {
-                HStack(spacing: 6) {
-                    Image(asset: "icon_star").resizable().frame(width: 14, height: 14)
-                    Text(app.t("第 \(gift.index + 1) 件 · \(gift.name)", "Gift \(gift.index + 1) · \(gift.name)"))
-                        .font(.moodium(14, .bold))
-                }
-                .padding(.horizontal, 14).padding(.vertical, 7)
-                .glass(tint: world.accent, amount: 0.35)
-                .transition(.scale(scale: 0.85).combined(with: .opacity))
-            }
         }
         .frame(width: 220)
         .position(x: size.width / 2 + 100 * ringScale(size) + 120, y: size.height * 0.19)
@@ -128,12 +118,6 @@ struct SqueezeView: View {
         VStack {
             HStack(spacing: 10) {
                 GlassIconButton(symbol: "chevron.left") { exit() }
-                HStack(spacing: 6) {
-                    Image(asset: world.icon).resizable().scaledToFit().frame(width: 22, height: 22)
-                    Text(world.name(app.language)).font(.moodium(15, .semibold))
-                }
-                .padding(.horizontal, 14).padding(.vertical, 10)
-                .glass(tint: world.accent, amount: 0.15)
                 Spacer()
                 GlassIconButton(symbol: app.muted ? "speaker.slash.fill" : "speaker.wave.2.fill") { app.muted.toggle() }
                 GlassIconButton(symbol: "gearshape.fill") { withAnimation { showSettings = true } }

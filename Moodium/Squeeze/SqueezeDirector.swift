@@ -40,7 +40,6 @@ final class SqueezeDirector: ObservableObject {
     @Published private(set) var guide: String?
 
     // Gifts and dock
-    @Published private(set) var giftToast: (index: Int, name: String)?
     @Published private(set) var giftsGrown = 0
     @Published private(set) var showering = false
     @Published private(set) var dockToast: String?
@@ -445,12 +444,6 @@ final class SqueezeDirector: ObservableObject {
         giftsGrown = stage.garden.grown.count
         audio.sfx(world == .candy ? "grow_candy" : "grow_nature", volume: 0.55)
         if let p = stage.screenPoint(stage.garden.center(i)) { sparkles.giftBurst(at: p) }
-        let name = stage.garden.gifts[i].name(language)
-        withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) { giftToast = (i, name) }
-        after(2.8) { [weak self] in
-            guard let self, self.giftToast?.index == i else { return }
-            withAnimation(.easeOut(duration: 0.3)) { self.giftToast = nil }
-        }
     }
 
     // MARK: - Completion
