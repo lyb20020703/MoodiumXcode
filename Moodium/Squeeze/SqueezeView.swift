@@ -163,7 +163,7 @@ struct SqueezeView: View {
             : app.t("轻压底座两侧，把 Moodi 挤出来", "Press either side of the base to squeeze Moodi out")
     }
 
-    /// After Moodi is out: a small centred card under Moodi with two choices.
+    /// After Moodi is out: a small card in the middle of the screen with two choices.
     private var completionCard: some View {
         VStack(spacing: 10) {
             VStack(spacing: 3) {
@@ -186,9 +186,8 @@ struct SqueezeView: View {
         }
         .padding(.horizontal, 22).padding(.vertical, 12)
         .glass(RoundedRectangle(cornerRadius: 24, style: .continuous), tint: Palette.smoke, amount: 0.55)
-        // centred, below Moodi so the celebration stays in view
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
-        .padding(.bottom, 12)
+        // in the middle of the screen
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
     }
 
     // MARK: Touch fallback
