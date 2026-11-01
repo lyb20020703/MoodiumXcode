@@ -7,7 +7,6 @@ struct HomeView: View {
     @EnvironmentObject private var app: AppModel
     @State private var showSettings = false
     @State private var showJournal = false
-    @State private var figure = MoodiFigureModel()
     @State private var appeared = false
     @State private var wishCount = 0
     @State private var visits: [MoodVisit] = []
@@ -99,17 +98,9 @@ struct HomeView: View {
             .padding(.horizontal, 18).padding(.vertical, 10)
             .glass(RoundedRectangle(cornerRadius: 20, style: .continuous), tint: app.preSample?.mood.tint, amount: 0.18)
 
-            // the 3D Moodi (same model and animation as the rescue); tap to poke
-            ZStack {
-                Image(asset: "glow_radial").resizable()
-                    .frame(width: size * 1.8, height: size * 1.8)
-                    .colorMultiply(app.preSample?.mood.tint ?? Palette.lavender)
-                    .opacity(0.55)
-                    .allowsHitTesting(false)
-                MoodiFigure(model: figure) { pokeMoodi() }
-                    .frame(width: size * 1.5, height: size * 1.35)
-            }
-            .frame(height: size * 1.2)
+            // the 2D Moodi: face follows today's mood; tap to poke
+            FlatMoodi(mood: app.preSample?.mood, size: size) { pokeMoodi() }
+                .frame(height: size * 1.2)
 
             Button { app.moodCheck = .pre } label: {
                 HStack(spacing: 7) {
