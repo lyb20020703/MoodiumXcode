@@ -138,18 +138,15 @@ struct HomeView: View {
             // primary: the squeeze worlds
             Button { AudioDirector.shared.sfx("sfx_portal", volume: 0.45); app.stage = .select } label: {
                 HStack(spacing: 12) {
-                    // the two world islands, as seen in the world select carousel
+                    // the Candy World island, as seen in the world select carousel
                     ZStack {
                         Ellipse().fill(RadialGradient(colors: [Palette.lavender.opacity(0.4), .clear], center: .center, startRadius: 2, endRadius: 70))
                             .frame(width: 150, height: 64).offset(y: 22)
-                        Image(asset: "island_thumb_nature").resizable().scaledToFit().frame(width: 78)
-                            .offset(x: 34, y: -8)
-                            .shadow(color: .black.opacity(0.3), radius: 5, y: 3)
-                        Image(asset: "island_thumb_candy").resizable().scaledToFit().frame(width: 82)
-                            .offset(x: -26, y: 8)
+                        Image(asset: "island_thumb_candy").resizable().scaledToFit().frame(width: 104)
+                            .offset(y: 2)
                             .shadow(color: .black.opacity(0.35), radius: 6, y: 4)
                     }
-                    .frame(width: 140, height: 92)
+                    .frame(width: 120, height: 92)
                     VStack(alignment: .leading, spacing: 4) {
                         Text(app.t("捏捏小世界", "Squeeze worlds")).font(.moodium(22, .bold))
                         Text(app.t("糖果世界 · 自然世界\n把掉进枕头的 Moodi 挤出来", "Candy World · Nature World\nSqueeze Moodi out of the pillow"))
