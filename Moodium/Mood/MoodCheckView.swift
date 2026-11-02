@@ -39,10 +39,14 @@ struct MoodCheckView: View {
 
     var body: some View {
         GeometryReader { geo in
-            let plate = min(geo.size.height * 0.74, geo.size.width * 0.36, 330)
+            // an unfolded iPhone Duo held upright: the plate above the questions
+            let portrait = geo.size.height > geo.size.width
+            let plate = portrait ? min(geo.size.width * 0.66, geo.size.height * 0.4, 330)
+                                 : min(geo.size.height * 0.74, geo.size.width * 0.36, 330)
+            let layout = portrait ? AnyLayout(VStackLayout(spacing: 20)) : AnyLayout(HStackLayout(spacing: max(24, geo.size.width * 0.05)))
             ZStack {
                 backdrop
-                HStack(spacing: max(24, geo.size.width * 0.05)) {
+                layout {
                     plateView(size: plate)
                         .frame(width: plate + 70, height: plate + 56)
                     side

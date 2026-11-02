@@ -90,3 +90,11 @@
 已接入 Moodi.usdz、CandySoft_Mouth / NatureSoft_Mouth 及对应骨骼 JSON；旧软垫与 2D Moodi 保留回退。启动参数 `-MoodiSprite YES` 可强制对比旧流程。
 新流程包括飞入、掉入洞口、小芽求救、随能量渐进挤出、快眨、洞口收拢与跳出、再救一次。软垫倾斜 38°，按压缩放幅度为旧版 0.6；语音 RMS 驱动求救动作，静音时使用周期摆动。传感器、能量公式和礼物阈值未修改。
 验证：iOS 模拟器编译；包内 Mac SceneKit 预览工具校验模型与动画。真机完整流程、后台恢复、iPad 布局和 GPU/内存性能仍需实测，不能以编译成功替代。
+
+## iPhone Duo（折叠屏）
+
+- **桌面姿态放烟花**：Duo 内屏半折、折痕横在中间（像小笔记本一样立在桌上）时，捏捏世界一分为二：下半屏是枕头、Moodi、能量环和所有按钮，上半屏变成夜空。每次挤压，火花从 Moodi 嘴边升起、越过折痕，在上半屏炸开；长出礼物时连放三发，救出 Moodi 时放一整轮（糖果世界有爱心烟花）。开合角度越大，烟花飞得越高。展平、合上或在普通 iPhone 上，一切和原来一样。
+- **代码位置**：`Moodium/Foldable/Fold.swift`（折叠状态与上下两半的计算）、`Moodium/Foldable/FireworksSky.swift`（烟花与上半屏天空）；`SqueezeView` 按"舞台区 / 天空区"两个矩形摆放内容。
+- **编译要求**：折叠角度接口（`onHingeChange`、`reservedRegions(kind: .division)`）只在 iOS 27.1 SDK 里有，需要用 **Xcode 27.1** 编译。工程只在 iOS 27.1 及以上 SDK 下打开 `MOODIUM_DUO` 编译开关，用旧版 Xcode 编译时这部分代码不参与，应用照常运行。
+- **竖屏**：展开的 Duo 竖着拿时，首页和心情盘改为上下排列。
+- **边距**：所有页面全屏绘制，边缘按钮按机型统一留边（`Moodium/Design/ScreenMargins.swift`），刚好避开灵动岛和圆角。

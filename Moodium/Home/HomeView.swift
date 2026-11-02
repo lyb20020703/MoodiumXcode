@@ -15,15 +15,18 @@ struct HomeView: View {
     var body: some View {
         GeometryReader { geo in
             let compact = geo.size.height < 430
+            // an unfolded iPhone Duo held upright: Moodi above the cards
+            let portrait = geo.size.height > geo.size.width
+            let layout = portrait ? AnyLayout(VStackLayout(spacing: 28)) : AnyLayout(HStackLayout(spacing: max(20, geo.size.width * 0.04)))
             ZStack {
                 MoodBackdrop(colors: backdropColors)
                 TwinkleField(count: 26, color: Color(hex: 0xFFE6F3))
 
-                HStack(spacing: max(20, geo.size.width * 0.04)) {
+                layout {
                     moodiColumn(compact: compact)
                         .frame(maxWidth: .infinity)
                     cards(compact: compact)
-                        .frame(width: min(440, geo.size.width * 0.5))
+                        .frame(width: portrait ? min(460, geo.size.width - m.leading - m.trailing) : min(440, geo.size.width * 0.5))
                 }
                 .padding(.leading, m.leading + 4).padding(.trailing, m.trailing)
                 .padding(.top, m.top + (compact ? 30 : 46))

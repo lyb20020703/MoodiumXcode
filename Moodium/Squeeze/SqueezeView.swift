@@ -11,6 +11,9 @@ struct SqueezeView: View {
     @StateObject private var director: SqueezeDirector
     @State private var showSettings = false
     @State private var showHelp = false
+    @Environment(\.hinge) private var hinge
+    @StateObject private var fireworks = FireworksShow()
+    @State private var currentFold: TabletopFold?
 
     let world: MoodWorld
 
@@ -21,11 +24,25 @@ struct SqueezeView: View {
 
     var body: some View {
         GeometryReader { geo in
+            // On a half-folded iPhone Duo (tabletop) the stage and controls take the bottom half
+            // and the top half becomes a fireworks sky; everywhere else both rects are the screen.
+            let fold = TabletopFold.detect(geo, hinge: hinge)
+            let full = CGRect(origin: .zero, size: geo.size)
+            let stageRect = fold?.bottom ?? full
+            let skyRect = fold?.top ?? full
+            // the energy ring floats above the pillow (on the bottom half when folded, so the sky stays clear)
+            let ringCenter = CGPoint(x: stageRect.midX, y: stageRect.minY + stageRect.height * (fold == nil ? 0.19 : 0.17))
+            let ringSize = fold == nil ? full.size : CGSize(width: stageRect.width, height: stageRect.height * 0.8)
             ZStack {
+                if let fold { TabletopSky(world: world, fold: fold) }
+
                 SqueezeCanvas(director: director)
-                    .ignoresSafeArea()
-                    .gesture(touchGesture(width: geo.size.width), including: director.touchMode ? .all : .subviews)
-                    .simultaneousGesture(SpatialTapGesture(coordinateSpace: .global).onEnded { director.tap(at: $0.location) })
+                    .gesture(touchGesture(width: stageRect.width), including: director.touchMode ? .all : .subviews)
+                    .simultaneousGesture(SpatialTapGesture(coordinateSpace: .local).onEnded { director.tap(at: $0.location) })
+                    .frame(width: stageRect.width, height: stageRect.height)
+                    .position(x: stageRect.midX, y: stageRect.midY)
+
+                if fold != nil { FireworksLayer(show: fireworks) }
 
                 ZStack {
                     if director.phase != .complete {
@@ -40,33 +57,48 @@ struct SqueezeView: View {
                         .animation(.easeOut(duration: 0.5), value: director.phase)
                 }
                 .animation(.easeInOut(duration: 0.35), value: director.mode)
-                .scaleEffect(ringScale(geo.size))
-                .position(x: geo.size.width / 2, y: geo.size.height * 0.19)
+                .scaleEffect(ringScale(ringSize))
+                .position(ringCenter)
 
-                toasts(geo.size)
+                toasts(ringCenter, scale: ringScale(ringSize))
 
-                hud
-                    .padding(m.insets)
+                // controls: top corners of the stage (just under the fold when folded)
+                pinned(stageRect, .top, EdgeInsets(top: fold == nil ? m.top : 10, leading: m.leading, bottom: 0, trailing: m.trailing)) {
+                    hudButtons
+                }
 
-                ModeBar(director: director, showHelp: $showHelp)
-                    .opacity(director.phase == .complete ? 0 : 1)
-                    .animation(.easeOut(duration: 0.3), value: director.phase)
-                    .disabled(director.phase == .complete)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .trailing)
-                    .padding(.trailing, m.trailing)
-                    .offset(y: -6)
+                // Moodi's lines and the guide: bottom of the screen, or just above the fold
+                pinned(fold == nil ? full : skyRect, .bottom,
+                       EdgeInsets(top: 0, leading: m.leading, bottom: fold == nil ? m.bottom : 12, trailing: m.trailing)) {
+                    captions
+                }
 
-                if director.showCard { completionCard.transition(.scale(scale: 0.9).combined(with: .opacity)) }
+                pinned(stageRect, .trailing, EdgeInsets(top: fold == nil ? 0 : 56, leading: 0, bottom: fold == nil ? 12 : m.bottom, trailing: m.trailing)) {
+                    ModeBar(director: director, showHelp: $showHelp)
+                        .opacity(director.phase == .complete ? 0 : 1)
+                        .animation(.easeOut(duration: 0.3), value: director.phase)
+                        .disabled(director.phase == .complete)
+                }
+
+                if director.showCard {
+                    pinned(stageRect, .center, EdgeInsets()) { completionCard }
+                        .transition(.scale(scale: 0.9).combined(with: .opacity))
+                }
 
                 if showHelp { ModeHelpCard(world: world, touchMode: director.touchMode, isPresented: $showHelp).transition(.opacity) }
                 if showSettings { SettingsPanel(isPresented: $showSettings).transition(.opacity) }
             }
             .foregroundStyle(.white)
+            .onAppear { currentFold = fold }
+            .onChange(of: fold) { _, f in currentFold = f }
         }
+        .ignoresSafeArea()
         .onAppear {
             configureDirector()
+            fireworks.configure(world: world)
             director.start()
         }
+        .onReceive(director.skyCues) { cue in launchFireworks(cue) }
         .onDisappear { director.stop() }
         .onChange(of: scenePhase) { _, phase in
             if phase == .active { director.resume() } else { director.pause() }
@@ -89,7 +121,7 @@ struct SqueezeView: View {
     }
 
     /// Mode switch, gift and "energy full" messages under the ring.
-    private func toasts(_ size: CGSize) -> some View {
+    private func toasts(_ ring: CGPoint, scale: CGFloat) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             if director.modeToastAt != nil {
                 HStack(spacing: 6) {
@@ -102,7 +134,7 @@ struct SqueezeView: View {
             }
         }
         .frame(width: 220)
-        .position(x: size.width / 2 + 100 * ringScale(size) + 120, y: size.height * 0.19)
+        .position(x: ring.x + 100 * scale + 120, y: ring.y)
         .allowsHitTesting(false)
     }
 
@@ -112,15 +144,53 @@ struct SqueezeView: View {
 
     // MARK: HUD
 
-    private var hud: some View {
-        VStack {
-            HStack(spacing: 10) {
-                GlassIconButton(symbol: "chevron.left") { exit() }
-                Spacer()
-                GlassIconButton(symbol: app.muted ? "speaker.slash.fill" : "speaker.wave.2.fill") { app.muted.toggle() }
-                GlassIconButton(symbol: "gearshape.fill") { withAnimation { showSettings = true } }
-            }
+    private var hudButtons: some View {
+        HStack(spacing: 10) {
+            GlassIconButton(symbol: "chevron.left") { exit() }
             Spacer()
+            GlassIconButton(symbol: app.muted ? "speaker.slash.fill" : "speaker.wave.2.fill") { app.muted.toggle() }
+            GlassIconButton(symbol: "gearshape.fill") { withAnimation { showSettings = true } }
+        }
+    }
+
+    /// Places `content` inside `rect` with the given alignment and insets.
+    private func pinned<V: View>(_ rect: CGRect, _ alignment: Alignment, _ insets: EdgeInsets, @ViewBuilder _ content: () -> V) -> some View {
+        content()
+            .padding(insets)
+            .frame(width: rect.width, height: rect.height, alignment: alignment)
+            .position(x: rect.midX, y: rect.midY)
+    }
+
+    /// Sends a fireworks rocket up from the stage into the sky for each squeeze, gift and the finale.
+    private func launchFireworks(_ cue: SqueezeDirector.SkyCue) {
+        guard let fold = currentFold else { return }
+        let stage = fold.bottom
+        func origin(_ p: CGPoint?) -> CGPoint {
+            guard let p else { return CGPoint(x: stage.midX, y: stage.minY + stage.height * 0.4) }
+            return CGPoint(x: stage.minX + p.x, y: stage.minY + p.y)
+        }
+        switch cue {
+        case .squeeze(let intensity, let from):
+            fireworks.launch(from: origin(from), sky: fold.top, reach: fold.reach, power: 0.45 + 0.55 * intensity,
+                             shape: intensity > 0.75 ? .ring : .sphere)
+        case .gift(let from):
+            for k in 0..<3 {
+                fireworks.launch(from: origin(from), sky: fold.top, reach: fold.reach, power: 1,
+                                 shape: k == 1 ? .double : .sphere, delay: Double(k) * 0.18)
+            }
+            AudioDirector.shared.sfx("sfx_chime", volume: 0.3)
+        case .finale(let from):
+            let shapes: [FireworksShow.Shape] = world == .candy
+                ? [.heart, .sphere, .double, .heart, .ring, .sphere, .heart, .double, .sphere]
+                : [.double, .sphere, .ring, .double, .sphere, .ring, .double, .sphere, .sphere]
+            for (k, shape) in shapes.enumerated() {
+                fireworks.launch(from: origin(from), sky: fold.top, reach: fold.reach, power: 1.15,
+                                 shape: shape, delay: Double(k) * 0.28)
+            }
+        }
+    }
+
+    private var captions: some View {
             VStack(spacing: 8) {
                 if let subtitle = director.subtitle, !director.showCard {
                     HStack(spacing: 8) {
@@ -151,7 +221,6 @@ struct SqueezeView: View {
             }
             .frame(maxWidth: 360)
             .padding(.bottom, 4)
-        }
     }
 
     private var hintText: String {

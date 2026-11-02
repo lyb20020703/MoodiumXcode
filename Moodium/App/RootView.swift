@@ -3,6 +3,7 @@ import SwiftUI
 struct RootView: View {
     @EnvironmentObject private var app: AppModel
     @State private var margins = ScreenMargins()
+    @State private var hinge = RootView.initialHinge
 
     var body: some View {
         // Measure the device safe area here, then run every screen full screen with
@@ -11,6 +12,15 @@ struct RootView: View {
             .readSafeArea { safe in margins = Self.margins(for: safe) }
             .overlay { screens.ignoresSafeArea() }
             .environment(\.screenMargins, margins)
+            .environment(\.hinge, hinge)
+            .modifier(HingeObserver { hinge = $0 })
+    }
+
+    private static var initialHinge: HingeState {
+        #if MOODIUM_AUTOPILOT
+        if let simulated = HingeSimulation.state { return simulated }
+        #endif
+        return HingeState()
     }
 
     private static func margins(for safe: EdgeInsets) -> ScreenMargins {

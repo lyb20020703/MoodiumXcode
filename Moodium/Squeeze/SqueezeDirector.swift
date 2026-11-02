@@ -1,6 +1,7 @@
 import SwiftUI
 import SceneKit
 import SpriteKit
+import Combine
 
 /// Runs the squeeze rescue (ported from MoodiRescueDirector) on the phone:
 /// Moodi falls into the pillow, asks for help with a muffled voice, each squeeze of the base
@@ -16,6 +17,14 @@ import SpriteKit
 final class SqueezeDirector: ObservableObject {
     enum Phase { case intro, playing, complete }
     enum BreathStep: Equatable { case ready, inhale, exhale }
+
+    /// Fireworks cues for the iPhone Duo tabletop sky; `from` is in canvas points.
+    enum SkyCue {
+        case squeeze(intensity: Double, from: CGPoint?)
+        case gift(from: CGPoint?)
+        case finale(from: CGPoint?)
+    }
+    let skyCues = PassthroughSubject<SkyCue, Never>()
 
     @Published private(set) var phase: Phase = .intro
     @Published private(set) var energy: Double = 0
@@ -384,6 +393,7 @@ final class SqueezeDirector: ObservableObject {
         stage.kick(intensity, side: side)
         stage.burst(intensity, side: side)
         sparkles.burst(intensity: intensity, side: side)
+        skyCues.send(.squeeze(intensity: intensity, from: stage.mouthScreenPoint()))
         haptics.squeeze(intensity)
         audio.sfx("sfx_squish", volume: Float(0.25 + 0.35 * intensity))
         if stage.usesMeshMoodi {
@@ -437,7 +447,9 @@ final class SqueezeDirector: ObservableObject {
         guard stage.garden.grow(i) else { return }
         giftsGrown = stage.garden.grown.count
         audio.sfx(world == .candy ? "grow_candy" : "grow_nature", volume: 0.55)
-        if let p = stage.screenPoint(stage.garden.center(i)) { sparkles.giftBurst(at: p) }
+        let p = stage.screenPoint(stage.garden.center(i))
+        if let p { sparkles.giftBurst(at: p) }
+        skyCues.send(.gift(from: p))
     }
 
     // MARK: - Completion
@@ -458,6 +470,7 @@ final class SqueezeDirector: ObservableObject {
             guard let self else { return }
             self.sparkles.moodiPopOut()
             self.sparkles.celebrate()
+            self.skyCues.send(.finale(from: self.stage.mouthScreenPoint()))
             self.audio.sfx("sfx_complete", volume: 0.7)
             self.stage.rain(duration: 2.6)
         }
@@ -470,6 +483,7 @@ final class SqueezeDirector: ObservableObject {
         popped = true
         stage.burst(1, side: 0); stage.burst(1, side: 0)
         sparkles.celebrate(); audio.sfx("sfx_complete", volume: 0.7); stage.rain(duration: 2.6)
+        skyCues.send(.finale(from: stage.mouthScreenPoint()))
         after(0.55) { [weak self] in self?.say("K10", clarity: 1) }
         after(3.05) { [weak self] in withAnimation { self?.showCard = true } }
     }
