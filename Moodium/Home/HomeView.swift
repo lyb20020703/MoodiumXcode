@@ -59,8 +59,6 @@ struct HomeView: View {
     private var topBar: some View {
         VStack {
             HStack(spacing: 10) {
-                Text("Moodium").font(.moodium(20, .bold))
-                    .padding(.leading, 6)
                 Spacer()
                 GlassIconButton(symbol: app.muted ? "speaker.slash.fill" : "speaker.wave.2.fill") { app.muted.toggle() }
                 GlassIconButton(symbol: "gearshape.fill") { withAnimation { showSettings = true } }
