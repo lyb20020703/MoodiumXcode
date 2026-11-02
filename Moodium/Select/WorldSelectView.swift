@@ -4,6 +4,7 @@ import SwiftUI
 /// Moodi peeking beside the selected one, and the glass slide-to-enter control.
 struct WorldSelectView: View {
     @EnvironmentObject private var app: AppModel
+    @Environment(\.screenMargins) private var m
     @StateObject private var stage = CarouselStage()
     @State private var showSettings = false
     @State private var dragging = false
@@ -109,30 +110,9 @@ struct WorldSelectView: View {
                     moodChip.padding(.top, 6)
                 }
                 Spacer()
-                Button {
-                    inviteWork?.cancel(); AudioDirector.shared.stopVoice()
-                    app.openWish(world)
-                } label: {
-                    Label(app.t("许愿风铃", "Wish chimes"), systemImage: "wind")
-                        .font(.moodium(14, .semibold))
-                        .padding(.horizontal, 14).frame(height: 46)
-                        .glass()
-                }
-                .buttonStyle(PressScaleStyle())
                 GlassIconButton(symbol: "gearshape.fill") { withAnimation { showSettings = true } }
             }
-            .padding(.top, 14)
-
-            Spacer()
-
-            HStack {
-                GlassIconButton(symbol: "chevron.left", size: 44) { stage.select(0) }
-                    .opacity(stage.selection > 0 ? 1 : 0).disabled(stage.selection == 0)
-                Spacer()
-                GlassIconButton(symbol: "chevron.right", size: 44) { stage.select(1) }
-                    .opacity(stage.selection < 1 ? 1 : 0).disabled(stage.selection == 1)
-            }
-            .animation(.easeOut(duration: 0.2), value: stage.selection)
+            .padding(.top, m.top)
 
             Spacer()
 
@@ -153,6 +133,9 @@ struct WorldSelectView: View {
                     Text("·").foregroundStyle(Palette.textMuted)
                     Text(world.tagline(app.language)).font(.moodium(15)).foregroundStyle(Palette.textMuted)
                 }
+                // a soft glass strip so the name stays readable over the island's base
+                .padding(.horizontal, 14).padding(.vertical, 5)
+                .glass(tint: Palette.smoke, amount: 0.45, shadow: false)
                 .id(world)
                 .transition(.opacity)
 
@@ -169,11 +152,11 @@ struct WorldSelectView: View {
                 .animation(.spring(response: 0.3, dampingFraction: 0.8), value: stage.selection)
             }
             .animation(.easeInOut(duration: 0.3), value: world)
-            .padding(.bottom, 10)
+            .padding(.bottom, m.bottom)
             .opacity(dragging ? 0.35 : 1)
             .animation(.easeOut(duration: 0.2), value: dragging)
         }
-        .padding(.horizontal, 22)
+        .padding(.leading, m.leading).padding(.trailing, m.trailing)
     }
 
     /// "不知道选哪个？测测心情" until the mood is checked, then today's mood (tap to check again).

@@ -6,6 +6,7 @@ import AVFoundation
 /// language, then whether the user has the sensory base.
 struct OpeningView: View {
     @EnvironmentObject private var app: AppModel
+    @Environment(\.screenMargins) private var m
     @State private var player = OpeningView.makePlayer()
     @State private var step: Step = .film
     @State private var endObserver: NSObjectProtocol?
@@ -21,11 +22,17 @@ struct OpeningView: View {
 
                 TransparentVideoView(player: player)
                     .frame(width: filmWidth, height: filmWidth / 2.36)
-                    // Feather the film's edges so its frame never shows against the room.
+                    // The film has its own alpha; only feather the outermost edge a little so
+                    // Moodi's head (which flies close to the top) is never faded away.
                     .mask {
-                        RadialGradient(colors: [.black, .black, .clear], center: .center,
-                                       startRadius: 0, endRadius: filmWidth * 0.5)
-                            .scaleEffect(x: 1, y: 0.62)
+                        LinearGradient(stops: [.init(color: .clear, location: 0), .init(color: .black, location: 0.03),
+                                               .init(color: .black, location: 0.97), .init(color: .clear, location: 1)],
+                                       startPoint: .leading, endPoint: .trailing)
+                            .mask {
+                                LinearGradient(stops: [.init(color: .clear, location: 0), .init(color: .black, location: 0.02),
+                                                       .init(color: .black, location: 0.98), .init(color: .clear, location: 1)],
+                                               startPoint: .top, endPoint: .bottom)
+                            }
                     }
                     .scaleEffect(step == .film ? 1 : 0.62)
                     .offset(y: step == .film ? 0 : -geo.size.height * 0.24)
@@ -50,7 +57,7 @@ struct OpeningView: View {
                         }
                         Spacer()
                     }
-                    .padding(20)
+                    .padding(m.insets)
                     .transition(.opacity)
                 }
             }

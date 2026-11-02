@@ -22,6 +22,7 @@ struct MoodVisitMetrics: Equatable {
 /// world recommendation or the before / now comparison.
 struct MoodCheckView: View {
     @EnvironmentObject private var app: AppModel
+    @Environment(\.screenMargins) private var m
     let request: MoodCheckRequest
 
     private enum Step { case plate, confirm, result }
@@ -47,7 +48,7 @@ struct MoodCheckView: View {
                     side
                         .frame(maxWidth: 380, alignment: .leading)
                 }
-                .padding(.horizontal, 28)
+                .padding(.leading, m.leading + 8).padding(.trailing, m.trailing + 8)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
 
                 if !isPost && step != .result {
@@ -58,7 +59,7 @@ struct MoodCheckView: View {
                         .padding(.horizontal, 16).padding(.vertical, 9)
                         .glass(shadow: false)
                         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
-                        .padding(.top, 14).padding(.trailing, 20)
+                        .padding(.top, m.top).padding(.trailing, m.trailing)
                 }
             }
             .foregroundStyle(.white)

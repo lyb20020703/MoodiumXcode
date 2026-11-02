@@ -6,6 +6,7 @@ import SpriteKit
 /// pillow, Moodi's subtitles, and glass controls in the corners.
 struct SqueezeView: View {
     @EnvironmentObject private var app: AppModel
+    @Environment(\.screenMargins) private var m
     @Environment(\.scenePhase) private var scenePhase
     @StateObject private var director: SqueezeDirector
     @State private var showSettings = false
@@ -45,15 +46,14 @@ struct SqueezeView: View {
                 toasts(geo.size)
 
                 hud
-                    .padding(.horizontal, 18)
-                    .padding(.vertical, 12)
+                    .padding(m.insets)
 
                 ModeBar(director: director, showHelp: $showHelp)
                     .opacity(director.phase == .complete ? 0 : 1)
                     .animation(.easeOut(duration: 0.3), value: director.phase)
                     .disabled(director.phase == .complete)
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .trailing)
-                    .padding(.trailing, 16)
+                    .padding(.trailing, m.trailing)
                     .offset(y: -6)
 
                 if director.showCard { completionCard.transition(.scale(scale: 0.9).combined(with: .opacity)) }

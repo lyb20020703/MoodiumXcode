@@ -5,6 +5,7 @@ import SwiftUI
 /// mood journal. Every "back" in the app ends up here.
 struct HomeView: View {
     @EnvironmentObject private var app: AppModel
+    @Environment(\.screenMargins) private var m
     @State private var showSettings = false
     @State private var showJournal = false
     @State private var appeared = false
@@ -24,9 +25,9 @@ struct HomeView: View {
                     cards(compact: compact)
                         .frame(width: min(440, geo.size.width * 0.5))
                 }
-                .padding(.horizontal, 28)
-                .padding(.top, compact ? 44 : 60)
-                .padding(.bottom, 16)
+                .padding(.leading, m.leading + 4).padding(.trailing, m.trailing)
+                .padding(.top, m.top + (compact ? 30 : 46))
+                .padding(.bottom, m.bottom)
                 .opacity(appeared ? 1 : 0)
                 .offset(y: appeared ? 0 : 14)
 
@@ -65,7 +66,7 @@ struct HomeView: View {
             }
             Spacer()
         }
-        .padding(.horizontal, 18).padding(.vertical, 12)
+        .padding(m.insets)
     }
 
     // MARK: Moodi

@@ -5,6 +5,7 @@ import SwiftUI
 /// Rewrite on the right. Hung wishes sway in a row along the top.
 struct WishView: View {
     @EnvironmentObject private var app: AppModel
+    @Environment(\.screenMargins) private var m
     @StateObject private var wish: WishController
     @State private var flyStart: Date?
     @State private var showSettings = false
@@ -79,7 +80,7 @@ struct WishView: View {
             }
             Spacer()
         }
-        .padding(.horizontal, 18).padding(.vertical, 12)
+        .padding(m.insets)
     }
 
     private var subtitle: some View {
@@ -96,7 +97,7 @@ struct WishView: View {
                 .id(line)
             }
         }
-        .padding(.bottom, 12)
+        .padding(.bottom, m.bottom)
         .allowsHitTesting(false)
     }
 
