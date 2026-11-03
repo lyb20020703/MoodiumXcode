@@ -151,7 +151,7 @@ struct HomeView: View {
                     .frame(width: 120, height: 92)
                     VStack(alignment: .leading, spacing: 4) {
                         Text(app.t("捏捏小世界", "Squeeze worlds")).font(.moodium(22, .bold))
-                        Text(app.t("糖果世界 · 自然世界\n把掉进感官袋的 Moodi 挤出来", "Candy World · Nature World\nSqueeze Moodi out of the sensory bag"))
+                        Text(app.t("把掉进感官袋的 Moodi 挤出来", "Squeeze Moodi out of the sensory bag"))
                             .font(.moodium(13)).foregroundStyle(Palette.textMuted)
                             .fixedSize(horizontal: false, vertical: true)
                     }
