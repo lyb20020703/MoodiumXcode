@@ -2,12 +2,9 @@ import CoreMotion
 import UIKit
 import simd
 
-/// Turns the phone's rocking on the sensory base into squeeze pulses.
-///
-/// The phone sits in the middle of the pillow-shaped base. Pressing one side tips the phone,
-/// which the gyroscope sees as a short burst of rotation. We watch the rotation rate in the
-/// screen plane, keep an adaptive noise floor, and emit one pulse per burst with an intensity
-/// from its peak and a side (-1 left, +1 right, 0 middle) from which edge dipped first.
+/// Reads the phone's motion while it sits on the sensory bag and turns its small left/right
+/// rocks into squeeze pulses (the counting itself is in `RockDetector`). Also reports gravity for
+/// the props, hard jolts (picked up or shaken), and in breath mode when the bag is held down.
 final class PressSensor {
     struct Pulse {
         let intensity: Double
@@ -20,38 +17,34 @@ final class PressSensor {
     var onShake: (() -> Void)?
     /// The base is being held down (the phone stays tipped) / let go. Used by breath mode.
     var onHold: ((Bool) -> Void)?
-    private(set) var isHeld = false
+    var isHeld: Bool { detector.isHeld }
 
-    var sensitivity: Sensitivity = .normal
+    var sensitivity: Sensitivity = .normal { didSet { detector.scale = sensitivity.thresholdScale } }
     var pulsesEnabled = true
+    /// Breath mode: holds matter and the resting tilt stays put while the bag is held.
+    var holdMode = false {
+        didSet {
+            guard holdMode != oldValue else { return }
+            let wasHeld = detector.isHeld
+            detector.holdMode = holdMode
+            if wasHeld, !holdMode { onHold?(false) }
+        }
+    }
 
     var isAvailable: Bool { manager.isDeviceMotionAvailable }
 
     private let manager = CMMotionManager()
+    private var detector = RockDetector()
     private var orientation: UIInterfaceOrientation = .landscapeRight
     private var lastOrientationCheck: TimeInterval = 0
-
-    private enum State { case idle, rising, cooldown }
-    private var state = State.idle
-    private var noiseFloor = 0.06
-    private var peak = 0.0
-    private var peakSide = 0.0
-    private var riseStart: TimeInterval = 0
-    private var lastPulse: TimeInterval = 0
     private var suppressUntil: TimeInterval = 0
     private var lastShake: TimeInterval = 0
     private var lastMotionSend: TimeInterval = 0
 
-    // Hold detection: how far gravity has tipped away from where the phone rests.
-    private var restGravity: SIMD3<Double>?
-    private var tipSince: TimeInterval?
-    private var settleSince: TimeInterval?
-    private var heldSince: TimeInterval = 0
-    private var releasedAt: TimeInterval = 0
-
     func start() {
         guard manager.isDeviceMotionAvailable, !manager.isDeviceMotionActive else { return }
         refreshOrientation()
+        detector.rebase()
         manager.deviceMotionUpdateInterval = 1.0 / 100
         manager.startDeviceMotionUpdates(using: .xArbitraryZVertical, to: .main) { [weak self] motion, _ in
             guard let self, let motion else { return }
@@ -61,9 +54,8 @@ final class PressSensor {
 
     func stop() {
         manager.stopDeviceMotionUpdates()
-        state = .idle
-        if isHeld { isHeld = false; onHold?(false) }
-        restGravity = nil
+        if detector.isHeld, holdMode { onHold?(false) }
+        detector.rebase()
     }
 
     /// Ignore motion briefly, e.g. while our own haptics shake the phone.
@@ -98,100 +90,30 @@ final class PressSensor {
         let a = SIMD3(motion.userAcceleration.x, motion.userAcceleration.y, motion.userAcceleration.z)
 
         let screenGravity = SIMD2(simd_dot(g, axes.right), simd_dot(g, axes.up))
-        // Rotation about screen-up tips the left/right edges; about screen-right tips top/bottom.
+        // Rotation about screen-up is the left/right rock, the only way the bag moves the phone.
         let rockLR = simd_dot(r, axes.up)
-        let rockFB = simd_dot(r, axes.right)
-        let magnitude = (rockLR * rockLR + rockFB * rockFB).squareRoot()
 
         if now - lastMotionSend > 1.0 / 60 {
             lastMotionSend = now
             onMotion?(screenGravity, rockLR)
         }
 
-        // A hard jolt means the phone was picked up or shaken, not pressed on the base.
+        // A hard jolt means the phone was picked up or shaken, not pressed on the bag.
         if simd_length(a) > 1.1 {
             if now - lastShake > 0.6 { lastShake = now; onShake?() }
             suppress(for: 0.5)
-            state = .idle
-            restGravity = nil
-            if isHeld { isHeld = false; releasedAt = now; onHold?(false) }
+            if detector.isHeld, holdMode { onHold?(false) }
+            detector.rebase()
             return
         }
 
-        let k = sensitivity.thresholdScale
-        trackHold(simd_normalize(g), now: now, k: k)
-        let threshold = max(0.32 * k, noiseFloor * 4.5 * k)
-
-        switch state {
-        case .idle:
-            guard pulsesEnabled, now >= suppressUntil, now - lastPulse > 0.25 else {
-                if magnitude < threshold { trackNoise(magnitude) }
-                return
-            }
-            if magnitude > threshold {
-                state = .rising
-                peak = magnitude
-                riseStart = now
-                // Positive rate about screen-up dips the right edge: the right side was pressed.
-                peakSide = abs(rockLR) > abs(rockFB) * 0.6 ? (rockLR > 0 ? 1 : -1) : 0
-            } else {
-                trackNoise(magnitude)
-            }
-        case .rising:
-            if magnitude > peak { peak = magnitude }
-            if magnitude < peak * 0.55 || now - riseStart > 0.12 {
-                let intensity = min(1, max(0.2, (peak - threshold) / (2.2 * k) + 0.2))
-                lastPulse = now
-                state = .cooldown
-                // The pillow springing back after a long hold is a release, not a new squeeze.
-                let isRelease = (isHeld && now - heldSince > 0.35) || now - releasedAt < 0.3
-                if !isRelease { onPulse?(Pulse(intensity: intensity, side: peakSide)) }
-            }
-        case .cooldown:
-            // Let the rebound of the pillow settle before listening again.
-            if magnitude < threshold * 0.7 && now - lastPulse > 0.22 { state = .idle }
-        }
-    }
-
-    /// Pressing the base tips the phone and keeps it tipped while the hand stays down.
-    /// Gravity drifting more than ~1.8° from the resting direction for 0.1 s is a hold; back
-    /// within ~0.9° for 0.12 s is a release. The resting direction follows slowly while idle.
-    private func trackHold(_ g: SIMD3<Double>, now: TimeInterval, k: Double) {
-        guard pulsesEnabled else { return }
-        guard let rest = restGravity else { restGravity = g; return }
-        let angle = acos(max(-1, min(1, simd_dot(g, rest)))) * 180 / .pi
-        let on = 1.8 * k, off = 0.9 * k
-        if !isHeld {
-            if angle > on, now >= suppressUntil {
-                if tipSince == nil { tipSince = now }
-                if now - tipSince! >= 0.1 {
-                    isHeld = true; heldSince = now; settleSince = nil
-                    onHold?(true)
-                }
-            } else {
-                tipSince = nil
-                // follow slow drift (≈2.5 s) only while resting
-                restGravity = simd_normalize(rest + (g - rest) * 0.004)
-            }
-        } else {
-            if angle < off {
-                if settleSince == nil { settleSince = now }
-                if now - settleSince! >= 0.12 { release(now) }
-            } else {
-                settleSince = nil
-            }
-            // Someone moved the phone or leaned on it for ages: take this as the new rest.
-            if now - heldSince > 15 { restGravity = g; release(now) }
-        }
-    }
-
-    private func release(_ now: TimeInterval) {
-        isHeld = false; tipSince = nil; settleSince = nil; releasedAt = now
-        onHold?(false)
-    }
-
-    private func trackNoise(_ magnitude: Double) {
-        noiseFloor = min(0.4, max(0.02, noiseFloor * 0.985 + magnitude * 0.015))
+        // Left/right tilt in degrees; + when the right edge is lower.
+        let length = max(1e-6, simd_length(g))
+        let tilt = asin(max(-1, min(1, simd_dot(g, axes.right) / length))) * 180 / .pi
+        let result = detector.feed(tilt: tilt, rate: rockLR * 180 / .pi, now: now,
+                                   muted: !pulsesEnabled || now < suppressUntil)
+        if let pulse = result.pulse { onPulse?(Pulse(intensity: pulse.intensity, side: pulse.side)) }
+        if let hold = result.hold { onHold?(hold == .began) }
     }
 }
 

@@ -257,6 +257,7 @@ final class SqueezeDirector: ObservableObject {
         if holdStart != nil { holdEnded(interrupted: true) }
         audio.stopBreath()
         mode = m
+        sensor.holdMode = m == .breath
         // A manual switch uses the default tuning; the recommended start uses the mood's.
         params = announce ? SqueezeParameters() : SqueezeParameters.forMood(mood)
         rhythm = m == .rhythm ? RhythmScorer(params) : nil
