@@ -32,8 +32,6 @@ final class SqueezeDirector: ObservableObject {
     @Published private(set) var subtitle: String?
     @Published private(set) var showHint = false
     @Published private(set) var showCard = false
-    @Published private(set) var touchMode = false
-    @Published private(set) var sensorMissing = false
 
     // Modes
     @Published private(set) var mode: SqueezeMode = .free
@@ -58,7 +56,10 @@ final class SqueezeDirector: ObservableObject {
     private let audio = AudioDirector.shared
 
     private(set) var language: Language = .zh
-    private var hasBase = true
+    /// The breath hold in progress was started by a finger on the screen (not the base).
+    private var touchHolding = false
+    /// Right after a screen press the phone may still rock on the base; don't count that twice.
+    private var touchQuietUntil: CFTimeInterval = 0
     private var mood: MoodKind?
     private var squeezes = 0
     private(set) var totalSqueezes = 0
@@ -116,14 +117,11 @@ final class SqueezeDirector: ObservableObject {
 
     // MARK: - Settings
 
-    func configure(language: Language, hasBase: Bool, sensitivity: Sensitivity, mood: MoodKind?) {
+    /// Both inputs are always live: rocks of the base (gyroscope) and presses on the screen.
+    func configure(language: Language, sensitivity: Sensitivity, mood: MoodKind?) {
         let firstTime = self.mood == nil && !running
         self.language = language
-        self.hasBase = hasBase
         sensor.sensitivity = sensitivity
-        sensorMissing = hasBase && !sensor.isAvailable
-        touchMode = !hasBase || sensorMissing
-        sensor.pulsesEnabled = !touchMode
         if firstTime {
             self.mood = mood
             recommendedMode = mood?.recommendedMode
@@ -292,6 +290,8 @@ final class SqueezeDirector: ObservableObject {
 
     /// Sensor pulse: one squeeze of the base.
     private func pulse(intensity: Double, side: Double) {
+        // a finger on the screen also rocks the phone on the base: that press already counts
+        guard touchStart == nil, CACurrentMediaTime() >= touchQuietUntil else { return }
         switch mode {
         case .free: squeeze(intensity: intensity, side: side)
         case .rhythm: rhythmHit(intensity: intensity, side: side)
@@ -303,8 +303,13 @@ final class SqueezeDirector: ObservableObject {
 
     /// Sensor hold: the base is down / let go.
     private func baseHold(_ down: Bool) {
-        guard mode == .breath else { return }
-        if down { holdBegan(side: 0) } else { holdEnded(interrupted: false) }
+        guard mode == .breath, !touchHolding else { return }
+        if down {
+            guard touchStart == nil, CACurrentMediaTime() >= touchQuietUntil else { return }
+            holdBegan(side: 0)
+        } else {
+            holdEnded(interrupted: false)
+        }
     }
 
     /// Free mode squeeze (also what the autopilot and touch mode call).
@@ -542,14 +547,15 @@ final class SqueezeDirector: ObservableObject {
         }
     }
 
-    // MARK: - Touch mode (no base, or no motion sensor)
+    // MARK: - Touch (always on, alongside the base)
 
     func touchBegan() {
         guard touchStart == nil, acceptingSqueezes else { return }
         touchStart = Date()
         switch mode {
         case .breath:
-            holdBegan(side: 0)
+            // if the base is already held, the finger just joins that breath
+            if holdStart == nil { holdBegan(side: 0); touchHolding = holdStart != nil }
         case .rhythm:
             rhythmHit(intensity: 0.6, side: 0)
         case .free:
@@ -566,9 +572,11 @@ final class SqueezeDirector: ObservableObject {
     func touchEnded(atX x: CGFloat, width: CGFloat) {
         guard let start = touchStart else { return }
         touchStart = nil
+        touchQuietUntil = CACurrentMediaTime() + 0.35
         holdTimer?.invalidate()
         switch mode {
-        case .breath: holdEnded(interrupted: false)
+        case .breath:
+            if touchHolding { touchHolding = false; holdEnded(interrupted: false) }
         case .rhythm: break
         case .free:
             stage.setHold(0)
@@ -582,7 +590,7 @@ final class SqueezeDirector: ObservableObject {
     // MARK: - Guide lines
 
     private func text(_ key: String) -> String {
-        let thing = touchMode ? (language == .zh ? "屏幕" : "the screen") : (language == .zh ? "底座" : "the base")
+        let thing = language == .zh ? "底座或屏幕" : "the base or the screen"
         switch key {
         case "ready": return language == .zh ? "准备好了，就按住\(thing)" : "Press and hold \(thing) when you're ready"
         case "hold": return language == .zh ? "按住\(thing)，慢慢吸气" : "Hold \(thing), breathe in slowly"

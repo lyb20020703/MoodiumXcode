@@ -37,7 +37,7 @@ struct SqueezeView: View {
                 if let fold { TabletopSky(world: world, fold: fold) }
 
                 SqueezeCanvas(director: director)
-                    .gesture(touchGesture(width: stageRect.width), including: director.touchMode ? .all : .subviews)
+                    .gesture(touchGesture(width: stageRect.width))
                     .simultaneousGesture(SpatialTapGesture(coordinateSpace: .local).onEnded { director.tap(at: $0.location) })
                     .frame(width: stageRect.width, height: stageRect.height)
                     .position(x: stageRect.midX, y: stageRect.midY)
@@ -85,7 +85,7 @@ struct SqueezeView: View {
                         .transition(.scale(scale: 0.9).combined(with: .opacity))
                 }
 
-                if showHelp { ModeHelpCard(world: world, touchMode: director.touchMode, isPresented: $showHelp).transition(.opacity) }
+                if showHelp { ModeHelpCard(world: world, isPresented: $showHelp).transition(.opacity) }
                 if showSettings { SettingsPanel(isPresented: $showSettings).transition(.opacity) }
             }
             .foregroundStyle(.white)
@@ -104,12 +104,11 @@ struct SqueezeView: View {
             if phase == .active { director.resume() } else { director.pause() }
         }
         .onChange(of: app.language) { _, _ in configureDirector() }
-        .onChange(of: app.hasBase) { _, _ in configureDirector() }
         .onChange(of: app.sensitivity) { _, _ in configureDirector() }
     }
 
     private func configureDirector() {
-        director.configure(language: app.language, hasBase: app.hasBase, sensitivity: app.sensitivity, mood: app.preSample?.mood)
+        director.configure(language: app.language, sensitivity: app.sensitivity, mood: app.preSample?.mood)
     }
 
     private func wish() {
@@ -210,7 +209,7 @@ struct SqueezeView: View {
                         .transition(.opacity)
                         .id(guide)
                 } else if director.showHint {
-                    Label(hintText, systemImage: director.touchMode ? "hand.tap.fill" : "arrow.left.and.right")
+                    Label(hintText, systemImage: "hand.tap.fill")
                         .font(.moodium(14, .medium))
                         .foregroundStyle(Palette.textMuted)
                         .padding(.horizontal, 14).padding(.vertical, 8)
@@ -224,12 +223,7 @@ struct SqueezeView: View {
     }
 
     private var hintText: String {
-        if director.sensorMissing {
-            return app.t("没检测到运动传感器，按住屏幕再松开来捏捏", "No motion sensor found — press and release the screen")
-        }
-        return director.touchMode
-            ? app.t("按住屏幕，再松开，把 Moodi 挤出来", "Press and hold, then let go to squeeze Moodi out")
-            : app.t("轻压底座两侧，把 Moodi 挤出来", "Press either side of the base to squeeze Moodi out")
+        app.t("轻压底座，或按住屏幕再松开，把 Moodi 挤出来", "Press the base, or press and release the screen, to squeeze Moodi out")
     }
 
     /// After Moodi is out: a small card in the middle of the screen with two choices.

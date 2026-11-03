@@ -22,7 +22,6 @@ enum Sensitivity: Int, CaseIterable {
 final class AppModel: ObservableObject {
     private enum Key {
         static let language = "Moodium.Language"
-        static let hasBase = "Moodium.HasBase"
         static let sensitivity = "Moodium.Sensitivity"
         static let muted = "Moodium.Muted"
         static let lastWorld = "Moodium.LastWorld"
@@ -43,14 +42,13 @@ final class AppModel: ObservableObject {
     var recommendedWorld: MoodWorld? { preSample?.mood.recommendedWorld }
 
     @Published var language: Language { didSet { defaults.set(language.rawValue, forKey: Key.language) } }
-    @Published var hasBase: Bool { didSet { defaults.set(hasBase, forKey: Key.hasBase) } }
     @Published var sensitivity: Sensitivity { didSet { defaults.set(sensitivity.rawValue, forKey: Key.sensitivity) } }
     @Published var muted: Bool { didSet { defaults.set(muted, forKey: Key.muted); AudioDirector.shared.muted = muted } }
     @Published var lastWorld: MoodWorld { didSet { defaults.set(lastWorld.rawValue, forKey: Key.lastWorld) } }
 
     private let defaults = UserDefaults.standard
 
-    /// Language and base were answered once; later launches skip the questions.
+    /// The language was chosen once; later launches skip the question.
     var onboarded: Bool {
         get { defaults.bool(forKey: Key.onboarded) }
         set { defaults.set(newValue, forKey: Key.onboarded) }
@@ -60,7 +58,6 @@ final class AppModel: ObservableObject {
     init() {
         let d = UserDefaults.standard
         language = Language(rawValue: d.string(forKey: Key.language) ?? "") ?? .zh
-        hasBase = d.object(forKey: Key.hasBase) as? Bool ?? true
         sensitivity = Sensitivity(rawValue: d.integer(forKey: Key.sensitivity)) ?? .normal
         if d.object(forKey: Key.sensitivity) == nil { sensitivity = .normal }
         muted = d.bool(forKey: Key.muted)

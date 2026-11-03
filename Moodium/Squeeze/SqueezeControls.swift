@@ -61,11 +61,10 @@ struct ModeBar: View {
 struct ModeHelpCard: View {
     @EnvironmentObject private var app: AppModel
     let world: MoodWorld
-    let touchMode: Bool
     @Binding var isPresented: Bool
 
     var body: some View {
-        let thing = touchMode ? app.t("屏幕", "the screen") : app.t("底座", "the base")
+        let thing = app.t("底座或屏幕", "the base or the screen")
         ZStack {
             Color.black.opacity(0.35).ignoresSafeArea().onTapGesture { close() }
             VStack(alignment: .leading, spacing: 14) {

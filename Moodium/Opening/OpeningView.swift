@@ -2,8 +2,8 @@ import SwiftUI
 import AVFoundation
 
 /// Opening: the visionOS opening film (with alpha) plays over a smoky room, then the
-/// logo settles upward and the same two questions as visionOS appear as glass pills:
-/// language, then whether the user has the sensory base.
+/// logo settles upward and the language question appears as glass pills. (The base and
+/// the screen both work for squeezing, so there is nothing else to ask.)
 struct OpeningView: View {
     @EnvironmentObject private var app: AppModel
     @Environment(\.screenMargins) private var m
@@ -11,7 +11,7 @@ struct OpeningView: View {
     @State private var step: Step = .film
     @State private var endObserver: NSObjectProtocol?
 
-    private enum Step { case film, language, base }
+    private enum Step { case film, language }
 
     var body: some View {
         GeometryReader { geo in
@@ -80,15 +80,6 @@ struct OpeningView: View {
                     OpeningPill(title: "中文", highlighted: app.language == .zh) { choose(.zh) }
                     OpeningPill(title: "English", highlighted: app.language == .en) { choose(.en) }
                 }
-            case .base:
-                Text(app.t("你有 Moodium 感官底座吗？", "Do you have the Moodium sensory base?"))
-                    .font(.moodium(17, .medium)).foregroundStyle(Palette.textMuted)
-                HStack(spacing: 6) {
-                    OpeningPill(title: app.t("有", "Yes"), highlighted: app.hasBase) { chooseBase(true) }
-                    OpeningPill(title: app.t("没有", "No"), highlighted: !app.hasBase) { chooseBase(false) }
-                }
-                Text(app.t("没有也没关系，按住屏幕再松开也能捏捏", "No base? Press and release the screen to squeeze"))
-                    .font(.moodium(13)).foregroundStyle(.white.opacity(0.5))
             case .film:
                 EmptyView()
             }
@@ -120,7 +111,7 @@ struct OpeningView: View {
             player.seek(to: item.duration - CMTime(value: 1, timescale: 30), toleranceBefore: .zero, toleranceAfter: .zero)
         }
         player.pause()
-        // Questions only on the first launch; they can be changed in Settings later.
+        // The question only on the first launch; it can be changed in Settings later.
         if app.onboarded {
             AudioDirector.shared.sfx("sfx_portal", volume: 0.5)
             app.goHome()
@@ -131,11 +122,6 @@ struct OpeningView: View {
 
     private func choose(_ language: Language) {
         app.language = language
-        withAnimation(.spring(response: 0.5, dampingFraction: 0.85)) { step = .base }
-    }
-
-    private func chooseBase(_ has: Bool) {
-        app.hasBase = has
         app.onboarded = true
         AudioDirector.shared.sfx("sfx_portal", volume: 0.5)
         app.goHome()

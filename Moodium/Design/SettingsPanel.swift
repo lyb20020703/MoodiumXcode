@@ -20,23 +20,14 @@ struct SettingsPanel: View {
                 row(app.t("语言", "Language")) {
                     GlassSegmented(options: [(Language.zh, "中文"), (Language.en, "English")], selection: $app.language)
                 }
-                row(app.t("感官底座", "Sensory base")) {
-                    GlassSegmented(options: [(true, app.t("有", "Yes")), (false, app.t("没有", "No"))], selection: $app.hasBase)
+                row(app.t("底座灵敏度", "Base sensitivity")) {
+                    GlassSegmented(options: [(Sensitivity.gentle, app.t("灵敏", "High")),
+                                             (Sensitivity.normal, app.t("适中", "Medium")),
+                                             (Sensitivity.firm, app.t("稳重", "Low"))],
+                                   selection: $app.sensitivity)
                 }
-                if app.hasBase {
-                    row(app.t("按压灵敏度", "Sensitivity")) {
-                        GlassSegmented(options: [(Sensitivity.gentle, app.t("灵敏", "High")),
-                                                 (Sensitivity.normal, app.t("适中", "Medium")),
-                                                 (Sensitivity.firm, app.t("稳重", "Low"))],
-                                       selection: $app.sensitivity)
-                    }
-                    .transition(.opacity.combined(with: .move(edge: .top)))
-                }
-                Text(app.hasBase
-                     ? app.t("把手机吸在底座中间，按压底座两侧，手机的轻微摆动就会变成一次捏捏。",
-                             "Clip the phone onto the base. Pressing either side rocks the phone, and each rock becomes a squeeze.")
-                     : app.t("没有底座也可以：按住屏幕再松开，就是一次捏捏。",
-                             "No base? Press and hold the screen, then let go to squeeze."))
+                Text(app.t("两种方式随时都能捏捏：把手机放在底座中间按压底座两侧，或者直接按住屏幕再松开。",
+                           "Two ways to squeeze, both always on: rest the phone on the base and press either side, or press and release the screen."))
                     .font(.moodium(13))
                     .foregroundStyle(Palette.textMuted)
                     .fixedSize(horizontal: false, vertical: true)
@@ -45,7 +36,6 @@ struct SettingsPanel: View {
             .padding(24)
             .frame(width: 430)
             .glass(RoundedRectangle(cornerRadius: 30, style: .continuous), tint: Palette.smoke, amount: 0.6)
-            .animation(.spring(response: 0.35, dampingFraction: 0.85), value: app.hasBase)
         }
     }
 
