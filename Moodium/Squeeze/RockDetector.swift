@@ -3,7 +3,7 @@ import Foundation
 /// Turns the phone's left/right tilt on the sensory bag into squeezes.
 ///
 /// The bag only takes presses on its left and right sides, so the phone just rocks a little
-/// sideways (often well under a degree). We follow that one tilt angle and count a squeeze each
+/// sideways (often a tenth of a degree or two). We follow that one tilt angle and count a squeeze each
 /// time the phone dips away from where it rests by a small swing. Coming back (letting go) never
 /// counts, but pressing again, or pressing the other side, always does, however fast.
 ///
@@ -20,14 +20,14 @@ struct RockDetector {
 
     // Tuning, in degrees and seconds, at the "适中" sensitivity (multiplied by `scale`).
     /// Tilt change since the last turn that counts as one squeeze.
-    static let swing = 0.35
+    static let swing = 0.15
     /// The dip must move at least this fast (°/s), so slow settling never counts.
-    static let minRate = 2.5
+    static let minRate = 0.8
     /// Rate (°/s) that gives full intensity.
-    static let fullRate = 35.0
+    static let fullRate = 18.0
     /// Breath mode: tipped this far from rest for 0.1 s is a hold, back within `holdOff` for 0.12 s lets go.
-    static let holdOn = 0.8
-    static let holdOff = 0.4
+    static let holdOn = 0.5
+    static let holdOff = 0.25
     /// Shortest time between two squeezes.
     static let gap = 0.12
 
@@ -45,6 +45,8 @@ struct RockDetector {
     private var armed = true        // this swing has not counted yet
     private var swingRate = 0.0     // fastest °/s since the last turn
     private var smoothRate = 0.0    // |rate| lightly smoothed, so one noisy sample can't pass `minRate`
+    private var peak = 0.0          // deepest recent tilt from rest (signed), to tell bounces from presses
+    private var peakTime = -Double.infinity
     private var lastPulse = -Double.infinity
     private var lastTime: Double?
     private var quietFor = 0.0
@@ -55,6 +57,7 @@ struct RockDetector {
     /// Forget where the phone rests (it was picked up or moved); the next sample becomes rest.
     mutating func rebase() {
         rest = nil
+        peak = 0
         direction = 0
         armed = true
         tipSince = nil
@@ -79,7 +82,7 @@ struct RockDetector {
         let turn = swing * 0.5
 
         // Still for a moment: start fresh from here, so the next press always counts.
-        quietFor = speed < 1.5 ? quietFor + dt : 0
+        quietFor = speed < Self.minRate * scale * 0.7 ? quietFor + dt : 0
         if quietFor > 0.3, direction != 0, abs(tilt - extreme) < turn {
             anchor = tilt; extreme = tilt; direction = 0; armed = true; swingRate = 0
         }
@@ -94,14 +97,14 @@ struct RockDetector {
             extreme = tilt
         } else if (extreme - tilt) * direction >= turn {
             anchor = extreme; extreme = tilt; direction = -direction; armed = true; swingRate = 0
+            if abs(anchor - r) >= abs(recentPeak(now)) { peak = anchor - r; peakTime = now }
         }
         swingRate = max(swingRate, speed)
 
         // A squeeze: moved a full swing since the last turn, away from rest (not on the way back).
-        // Swinging through rest to the other side right after a deep press must go at least a
-        // quarter as far, so the bag bouncing back after a hard press isn't a second squeeze.
-        let anchorOff = anchor - r
-        let crossing = anchorOff * direction < 0 ? abs(anchorOff) * 0.25 : 0
+        // Right after a deep press, the next one must go at least a quarter as deep, so the bag
+        // wobbling after a hard press isn't counted again.
+        let crossing = abs(recentPeak(now)) * 0.25
         var pulse: Pulse?
         if armed, direction != 0, !muted, now - lastPulse >= Self.gap,
            (tilt - anchor) * direction >= swing,
@@ -123,6 +126,12 @@ struct RockDetector {
             rest = r + off * min(1, dt / 1.0)
         }
         return (pulse, hold)
+    }
+
+    /// The deepest press of the last moment: kept for 0.4 s, then fading.
+    private func recentPeak(_ now: Double) -> Double {
+        let age = now - peakTime
+        return age < 0.4 ? peak : peak * exp(-(age - 0.4) / 0.3)
     }
 
     private mutating func trackHold(_ off: Double, tilt: Double, now: Double, muted: Bool) -> Hold? {

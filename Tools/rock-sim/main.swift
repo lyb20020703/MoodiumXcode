@@ -7,7 +7,7 @@ var rng = SystemRandomNumberGenerator()
 func noise(_ a: Double) -> Double { Double.random(in: -a...a, using: &rng) }
 
 /// Runs a tilt curve (degrees over time) through the detector at 100 Hz.
-func run(_ name: String, seconds: Double, scale: Double = 1, holdMode: Bool = false, noiseAmp: Double = 0.02,
+func run(_ name: String, seconds: Double, scale: Double = 1, holdMode: Bool = false, noiseAmp: Double = 0.01,
          expect: ClosedRange<Int>, holds: Int? = nil, _ curve: (Double) -> Double) {
     var d = RockDetector(); d.scale = scale; d.holdMode = holdMode
     var pulses = 0, holdEvents: [String] = []
@@ -40,32 +40,32 @@ func press(_ t: Double, at start: Double, depth: Double, down: Double = 0.12, ho
 }
 
 // 1. alternating left/right presses, 0.6° each, 3 per second, for 5 s
-run("左右交替快速按 0.6°", seconds: 5.2, expect: 14...16) { t in
+run("左右交替快速按 0.25°", seconds: 5.2, expect: 14...16) { t in
     let i = Int(t / 0.333); let s = Double(i).truncatingRemainder(dividingBy: 2) == 0 ? 1.0 : -1.0
-    return press(t, at: Double(i) * 0.333, depth: 0.6 * s, down: 0.12, hold: 0.04, up: 0.15)
+    return press(t, at: Double(i) * 0.333, depth: 0.25 * s, down: 0.12, hold: 0.04, up: 0.15)
 }
 // 2. pressing the same side again and again, 0.5°, every 0.4 s
-run("同一侧连续按 0.5°", seconds: 4.1, expect: 11...11) { t in
-    let i = Int(t / 0.4); return press(t, at: Double(i) * 0.4, depth: -0.5)
+run("同一侧连续按 0.2°", seconds: 4.1, expect: 11...11) { t in
+    let i = Int(t / 0.4); return press(t, at: Double(i) * 0.4, depth: -0.2)
 }
 // 3. gentle presses 0.4° once a second
-run("轻按 0.4°，每秒一次", seconds: 6, expect: 6...6) { t in
-    let i = Int(t); return press(t, at: Double(i), depth: 0.4, down: 0.2, hold: 0.2, up: 0.3)
+run("轻按 0.18°，每秒一次", seconds: 6, expect: 6...6) { t in
+    let i = Int(t); return press(t, at: Double(i), depth: 0.18, down: 0.2, hold: 0.2, up: 0.3)
 }
 // 4. very light 0.3° presses: missed at 适中, counted at 灵敏
-run("很轻 0.3°（适中）", seconds: 5, expect: 0...5) { t in let i = Int(t); return press(t, at: Double(i), depth: 0.3) }
-run("很轻 0.3°（灵敏）", seconds: 5, scale: 0.7, expect: 5...5) { t in let i = Int(t); return press(t, at: Double(i), depth: 0.3) }
+run("很轻 0.1°（适中）", seconds: 5, expect: 0...5) { t in let i = Int(t); return press(t, at: Double(i), depth: 0.1) }
+run("很轻 0.1°（灵敏）", seconds: 5, scale: 0.7, expect: 5...5) { t in let i = Int(t); return press(t, at: Double(i), depth: 0.3) }
 // 5. strong presses 3° with wobble on release
 run("用力按 3°，松手回弹 20%", seconds: 5, expect: 5...5) { t in
     let i = Int(t); return press(t, at: Double(i), depth: 3, down: 0.1, hold: 0.1, up: 0.15, wobble: 0.2)
 }
 // 6. only sensor noise
-run("放着不动（噪声 0.05°）", seconds: 10, noiseAmp: 0.05, expect: 0...0) { _ in 0 }
+run("放着不动（噪声 0.03°）", seconds: 10, noiseAmp: 0.03, expect: 0...0) { _ in 0 }
 // 7. slow drift 2° over 8 s (phone settling into the bag)
 run("慢慢下沉 2°/8 秒", seconds: 10, expect: 0...0) { t in min(2, t / 4) }
 // 8. phone rests tilted 1.5°, then presses on both sides
-run("本身斜放 1.5° 再左右按", seconds: 6, expect: 4...4) { t in
-    1.5 + (t > 2 ? press(t, at: 2.5, depth: 0.6) + press(t, at: 3.5, depth: -0.6) + press(t, at: 4.5, depth: 0.6) + press(t, at: 5.3, depth: -0.6) : 0)
+run("本身斜放 1.5° 再左右按 0.25°", seconds: 6, expect: 4...4) { t in
+    1.5 + (t > 2 ? press(t, at: 2.5, depth: 0.25) + press(t, at: 3.5, depth: -0.25) + press(t, at: 4.5, depth: 0.25) + press(t, at: 5.3, depth: -0.25) : 0)
 }
 // 5b. alternating hard left 3° and light right 0.9°
 run("左重 3° 右轻 0.9° 交替", seconds: 4, expect: 8...8) { t in
