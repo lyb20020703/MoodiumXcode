@@ -43,6 +43,10 @@ struct SqueezeView: View {
                     .frame(width: stageRect.width, height: stageRect.height)
                     .position(x: stageRect.midX, y: stageRect.midY)
 
+                ModeAtmosphere(director: director, world: world)
+                    .frame(width: stageRect.width, height: stageRect.height)
+                    .position(x: stageRect.midX, y: stageRect.midY)
+
                 if fold != nil { FireworksLayer(show: fireworks) }
 
                 ZStack {

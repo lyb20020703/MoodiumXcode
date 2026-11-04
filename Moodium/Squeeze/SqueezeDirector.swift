@@ -38,7 +38,8 @@ final class SqueezeDirector: ObservableObject {
     @Published private(set) var recommendedMode: SqueezeMode?
     @Published private(set) var modeToastAt: Date?
     @Published private(set) var combo = 0
-    @Published private(set) var lastHit: (at: Date, accuracy: Double)?
+    /// The last rhythm press: how close to the beat (0 miss…1 perfect), and whether it came before the beat.
+    @Published private(set) var lastHit: RhythmHit?
     @Published private(set) var rhythmAdaptive = false
     @Published private(set) var breathStep: BreathStep = .ready
     @Published private(set) var breathStepAt = Date()
@@ -94,6 +95,11 @@ final class SqueezeDirector: ObservableObject {
     private var baseFlow = 0.0      // base motion energy not paid yet
     private var lastFlowPay = 0.0
     private var baseDepth = 0.0     // the pillow following the base, 0…1
+    /// 0…1 how hard the base is rocking right now (free mode), smoothed; read by the atmosphere
+    /// layer every frame, so not published.
+    private(set) var flowLevel = 0.0
+    /// The pillow's screen rect, kept for the atmosphere layer.
+    private(set) var jellyRect: CGRect?
 
     init(world: MoodWorld) {
         self.world = world
@@ -229,7 +235,7 @@ final class SqueezeDirector: ObservableObject {
 
     /// The pillow's screen rect changed (layout or rotation).
     func layoutChanged() {
-        if let rect = stage.jellyScreenRect() { sparkles.setJellyRect(rect) }
+        if let rect = stage.jellyScreenRect() { sparkles.setJellyRect(rect); jellyRect = rect }
         sparkles.spriteMoodi = !stage.usesMeshMoodi
         sparkles.setMouthPoint(stage.mouthScreenPoint())
     }
@@ -364,12 +370,18 @@ final class SqueezeDirector: ObservableObject {
         } else {
             baseDepth = 0
         }
+        // how hard the bag is rocking: flow is energy units for ~1/60 s, ~8 units/s is a good steady rock
+        let level = mode == .free && free && acceptingSqueezes && phase != .complete ? min(1, flow * 60 / 8) : 0
+        flowLevel += (level - flowLevel) * (level > flowLevel ? 0.25 : 0.04)
+        sparkles.setFlow(flowLevel)
         guard mode == .free, free else { baseFlow = 0; return }
         baseFlow += flow
         if baseFlow >= 0.5 || (baseFlow > 0 && now - lastFlowPay > 0.15) {
             lastFlowPay = now
             if phase == .intro, acceptingSqueezes { phase = .playing }
             pay(units: baseFlow, effects: false)
+            // rocking counts as playing: the ring stays awake and Moodi doesn't ask if you're still there
+            if baseFlow > 0.05, Date().timeIntervalSince(lastSqueeze) > 1 { lastSqueeze = Date() }
             baseFlow = 0
         }
     }
@@ -398,13 +410,17 @@ final class SqueezeDirector: ObservableObject {
         let now = CACurrentMediaTime()
         let gap = lastRhythmStart.map { now - $0 } ?? .infinity
         lastRhythmStart = now
+        // past the middle of the beat, the press came before the next beat
+        let early = rhythmPhase(now) > 0.5
         let earned = rhythm.started(now: now, beatTime: beatTime(now), strong: intensity >= 0.6)
         combo = rhythm.combo
         rhythmAdaptive = rhythm.adaptive
-        lastHit = (Date(), rhythm.lastAccuracy)
+        lastHit = RhythmHit(at: Date(), accuracy: rhythm.lastAccuracy, early: early)
         squeezeEffects(intensity: max(intensity, 0.4 + 0.6 * rhythm.lastAccuracy), side: side)
         if rhythm.lastAccuracy > 0 {
             audio.sfx("sfx_rhythm_hit", volume: Float(0.18 + 0.2 * rhythm.lastAccuracy))
+            // a streak plays a little tune: the world's three chime notes, rising
+            audio.sfx("chime_ring_\(world.rawValue)_\((combo - 1) % 3)", volume: Float(0.12 + 0.18 * rhythm.lastAccuracy))
             if rhythm.lastRush { sparkles.giftBurst(at: nil); haptics.gift() }
         }
         pay(units: earned)
@@ -445,7 +461,7 @@ final class SqueezeDirector: ObservableObject {
         stage.burst(0.3 + 0.7 * q, side: 0)
         sparkles.burst(intensity: 0.3 + 0.7 * q, side: 0)
         if q > 0.6 { haptics.squeeze(0.6) }
-        guide = q > 0 ? text("release") : text("longer")
+        guide = q > 0 ? nil : text("longer")
         pay(units: earned)
         after(params.exhaleOk) { [weak self] in
             guard let self, self.breathStep == .exhale, self.holdStart == nil else { return }
@@ -460,7 +476,6 @@ final class SqueezeDirector: ObservableObject {
         // pillow sinks slowly while breathing in
         stage.setHold(min(1, held / params.inhale) * 0.8)
         pay(units: breath.held(seconds: held, dt: 0.1), effects: false)
-        if held >= params.qOkLo, guide != text("letGo") { guide = text("letGo") }
     }
 
     /// The visual / haptic / sound side of one squeeze.
@@ -516,6 +531,8 @@ final class SqueezeDirector: ObservableObject {
 
     #if MOODIUM_AUTOPILOT
     func autopilotHold(_ down: Bool) { if down { holdBegan(side: 0) } else { holdEnded(interrupted: false) } }
+    /// Fakes the bag rocking at `level` (0…1) for one 1/60 s sample.
+    func autopilotRock(_ level: Double, t: Double) { baseLive(flow: level * 8 / 60, depth: 0.5 * sin(t * 9)) }
     func autopilotBeatDelay() -> Double { let u = rhythmPhase(); return (1 - u) * rhythmPeriod }
     #endif
 
@@ -572,6 +589,7 @@ final class SqueezeDirector: ObservableObject {
     }
 
     func replay() {
+        flowLevel = 0
         withAnimation(.easeOut(duration: 0.25)) { showCard = false }
         cancelPending()
         audio.stopVoice()
@@ -667,9 +685,7 @@ final class SqueezeDirector: ObservableObject {
         switch key {
         case "ready": return language == .zh ? "准备好了，就按住\(thing)" : "Press and hold \(thing) when you're ready"
         case "hold": return language == .zh ? "按住\(thing)，慢慢吸气" : "Hold \(thing), breathe in slowly"
-        case "letGo": return language == .zh ? "可以松开了，慢慢呼气" : "You can let go now"
         case "longer": return language == .zh ? "可以按久一点，跟着光慢慢吸气" : "Hold a little longer, follow the light"
-        case "release": return language == .zh ? "松开\(thing)，慢慢呼气" : "Let go, breathe out slowly"
         case "rhythm": return language == .zh ? "光圈碰到圆环时，按一下\(thing)" : "Squeeze when the light reaches the ring"
         case "follow": return language == .zh ? "节拍开始跟着你的节奏走了" : "The beat now follows you"
         case "slow":
@@ -693,8 +709,8 @@ final class SqueezeDirector: ObservableObject {
         case .breath:
             switch breathStep {
             case .ready: guide = text("ready")
-            case .inhale: guide = text("hold")
-            case .exhale: guide = text("release")
+            case .inhale: guide = breaths == 0 ? text("hold") : nil
+            case .exhale: guide = nil
             }
         }
     }
@@ -739,6 +755,15 @@ final class SqueezeDirector: ObservableObject {
         pending.forEach { $0.cancel() }
         pending.removeAll()
     }
+}
+
+struct RhythmHit: Equatable {
+    var at: Date
+    var accuracy: Double
+    var early: Bool
+
+    enum Grade { case perfect, good, early, late }
+    var grade: Grade { accuracy >= 0.7 ? .perfect : accuracy > 0 ? .good : early ? .early : .late }
 }
 
 /// Moodi's lines from moodi_rescue_voice_lines.csv and the sticker invitations.

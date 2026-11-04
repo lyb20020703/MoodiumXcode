@@ -254,10 +254,47 @@ final class SparkleScene: SKScene, SKPhysicsContactDelegate {
         onMoteEdgeHit?(contact.contactPoint, strength)
     }
 
+    // MARK: - Flow (free mode, rocking the bag)
+
+    private var flowEmitter: SKEmitterNode?
+
+    /// While the bag is rocking, a soft stream of light rises out of the pillow, as strong as the rocking.
+    func setFlow(_ level: Double) {
+        if flowEmitter == nil {
+            guard level > 0.02 else { return }
+            let e = emitter(world == .candy ? "fx_sparkle" : "fx_twinkle", count: 0)
+            e.particleBirthRate = 0
+            e.particleLifetime = 1.3
+            e.particleLifetimeRange = 0.5
+            e.emissionAngle = .pi / 2
+            e.emissionAngleRange = .pi * 0.55
+            e.particleSpeed = 120
+            e.particleSpeedRange = 70
+            e.yAcceleration = -60
+            e.particleScale = 0.09
+            e.particleScaleRange = 0.04
+            e.particleScaleSpeed = -0.04
+            e.particleRotationSpeed = 2
+            e.particleAlphaSequence = SKKeyframeSequence(keyframeValues: [0, 0.95, 0] as [NSNumber], times: [0, 0.25, 1])
+            e.particleColorSequence = SKKeyframeSequence(keyframeValues: [UIColor.white, accent], times: [0, 0.6])
+            e.targetNode = fxLayer
+            e.zPosition = 5
+            fxLayer.addChild(e)
+            flowEmitter = e
+        }
+        guard let e = flowEmitter else { return }
+        let origin = mouthPoint ?? CGPoint(x: jellyRect.midX, y: jellyRect.maxY - jellyRect.height * 0.15)
+        e.position = origin
+        e.particlePositionRange = CGVector(dx: jellyRect.width * 0.35, dy: 6)
+        let calm = UIAccessibility.isReduceMotionEnabled ? 0.35 : 1
+        e.particleBirthRate = CGFloat(level < 0.03 ? 0 : 6 + 34 * level * calm)
+        e.particleSpeed = CGFloat(90 + 140 * level)
+    }
+
     // MARK: - Bouncy motes
 
     private func spawnMote(at p: CGPoint, velocity: CGVector) {
-        if moteLayer.children.count > 70 { moteLayer.children.first?.removeFromParent() }
+        if moteLayer.children.count > 36 { moteLayer.children.first?.removeFromParent() }
         let names = world == .candy ? ["fx_sugar", "fx_sugar", "fx_twinkle", "fx_star"] : ["fx_seed", "fx_leaf2", "fx_leaf3", "fx_twinkle"]
         let name = names.randomElement()!
         let d = CGFloat.random(in: 15...27)
@@ -401,7 +438,7 @@ final class SparkleScene: SKScene, SKPhysicsContactDelegate {
             } else if world == .candy && index == 1 {
                 node.particleBirthRate = CGFloat(maxRate * sparkle)
             } else if world == .candy {
-                node.particleBirthRate = CGFloat(maxRate * dust + 75 * full)
+                node.particleBirthRate = CGFloat(maxRate * dust + 40 * full)
             } else {
                 node.particleBirthRate = CGFloat(0.08 + maxRate * dust + 1.2 * full)
             }
