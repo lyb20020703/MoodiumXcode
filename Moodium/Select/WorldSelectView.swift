@@ -105,9 +105,7 @@ struct WorldSelectView: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(app.t("今天，想去哪里？", "Where to today?"))
                         .font(.moodium(28, .bold))
-                    Text(app.t("左右滑动，挑一个想去的小世界", "Swipe to pick a little world"))
-                        .font(.moodium(14)).foregroundStyle(Palette.textMuted)
-                    moodChip.padding(.top, 6)
+                    subtitle
                 }
                 Spacer()
                 GlassIconButton(symbol: "gearshape.fill") { withAnimation { showSettings = true } }
@@ -159,25 +157,23 @@ struct WorldSelectView: View {
         .padding(.leading, m.leading).padding(.trailing, m.trailing)
     }
 
-    /// "不知道选哪个？测测心情" until the mood is checked, then today's mood (tap to check again).
-    private var moodChip: some View {
-        Button { app.moodCheck = .pre } label: {
-            HStack(spacing: 7) {
-                if let sample = app.preSample {
-                    Image(asset: sample.mood.moodiFace).resizable().scaledToFit().frame(width: 22)
-                    Text(MoodCopy.text("rec.today", app.language, ["mood": sample.mood.name(app.language)]))
-                    Text("·").foregroundStyle(Palette.textMuted)
-                    Text(MoodCopy.text("rec.short.\(sample.mood.rawValue)", app.language)).foregroundStyle(Palette.textMuted)
-                } else {
-                    Image(asset: "icon_mood_neutral").resizable().frame(width: 17, height: 17)
-                    Text(MoodCopy.text("prompt.entry", app.language))
-                }
+    /// "Swipe to pick" — or, once today's mood is checked (on the home screen, the one place to
+    /// check it), that mood and Moodi's suggestion. Read-only: no second mood-check entry here.
+    private var subtitle: some View {
+        HStack(spacing: 6) {
+            if let sample = app.preSample {
+                Image(asset: sample.mood.moodiFace).resizable().scaledToFit().frame(width: 18)
+                Text(MoodCopy.text("rec.today", app.language, ["mood": sample.mood.name(app.language)]))
+                    .foregroundStyle(.white.opacity(0.9))
+                Text("·")
+                Text(MoodCopy.text("rec.short.\(sample.mood.rawValue)", app.language))
+            } else {
+                Text(app.t("左右滑动，挑一个想去的小世界", "Swipe to pick a little world"))
             }
-            .font(.moodium(13, .semibold))
-            .padding(.horizontal, 12).padding(.vertical, 7)
-            .glass(tint: app.preSample?.mood.tint, amount: 0.25, shadow: false)
         }
-        .buttonStyle(PressScaleStyle())
+        .font(.moodium(14))
+        .foregroundStyle(Palette.textMuted)
+        .accessibilityElement(children: .combine)
     }
 
     /// Moodi invites you into the world in view (S1c / S1n, or S2 for the recommended one),

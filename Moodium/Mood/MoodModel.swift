@@ -117,7 +117,6 @@ enum MoodLog {
 /// MoodCheckCopy.cs, with the sticker / bag lines reworded for the phone.
 enum MoodCopy {
     static let table: [String: (String, String)] = [
-        "prompt.entry": ("不知道选哪个？测测心情", "Not sure? Check your mood"),
         "plate.kicker": ("Moodi 想知道", "Moodi wants to know"),
         "plate.title.pre": ("你现在的心情怎么样？", "How are you feeling right now?"),
         "plate.title.post": ("现在呢？", "And now?"),
