@@ -108,29 +108,17 @@ final class SparkleScene: SKScene, SKPhysicsContactDelegate {
         let i = CGFloat(intensity)
         let origin = mouthPoint ?? CGPoint(x: jellyRect.midX + CGFloat(side) * jellyRect.width * 0.18, y: jellyRect.maxY - jellyRect.height * 0.12)
 
-        // Ring shock + glow flash
-        flash(at: origin, texture: "fx_ring", from: 0.15, to: 0.8 + 0.6 * i, duration: 0.45, alpha: 0.85, color: accent)
+        // Soft ring + glow flash
+        flash(at: origin, texture: "fx_ring", from: 0.15, to: 0.8 + 0.6 * i, duration: 0.45, alpha: 0.45, color: accent)
         flash(at: origin, texture: "fx_glow", from: 0.4, to: 1.0 + 0.5 * i, duration: 0.3, alpha: 0.38, color: accent)
 
-        // Sparkles, biased up and away from the pressed side; they bounce off the screen edges
+        // The world's own 3D props (SoftStage.burst) are what flies out; here only a few small glints,
+        // biased up and away from the pressed side, bouncing off the screen edges.
         let up = CGFloat.pi / 2 - CGFloat(side) * 0.45
-        for _ in 0..<scaled(14 + Int(22 * i)) {
+        for _ in 0..<scaled(3 + Int(4 * i)) {
             sparkOut(texture: "fx_sparkle", at: origin, angle: up + .random(in: -0.55 * .pi ... 0.55 * .pi),
                      speed: 260 + 260 * i + .random(in: -110...110), scale: 0.12 + .random(in: -0.035...0.035),
                      life: .random(in: 1.1...1.8), spin: .random(in: -2...2), color: accent, tintFrom: 0)
-        }
-        let star = pastel.randomElement()!
-        for _ in 0..<scaled(4 + Int(5 * i)) {
-            sparkOut(texture: world == .candy ? "fx_twinkle" : "fx_seed", at: origin, angle: .pi / 2 + .random(in: -0.45 * .pi ... 0.45 * .pi),
-                     speed: 320 + .random(in: -80...80), scale: 0.16 + .random(in: -0.03...0.03),
-                     life: .random(in: 1.7...2.4), spin: .random(in: -3...3), color: star, tintFrom: 1)
-        }
-
-        // Bouncy beads that ricochet around the screen
-        for _ in 0..<(3 + Int(5 * i)) {
-            let angle = CGFloat.pi / 2 - CGFloat(side) * 0.5 + CGFloat.random(in: -0.9...0.9)
-            let speed = CGFloat.random(in: 420...760) * (0.7 + 0.4 * i)
-            spawnMote(at: origin, velocity: CGVector(dx: cos(angle) * speed, dy: sin(angle) * speed))
         }
     }
 
@@ -142,26 +130,15 @@ final class SparkleScene: SKScene, SKPhysicsContactDelegate {
             guard let self else { return }
             self.flash(at: origin, texture: "fx_splash", from: 0.3, to: 2.6, duration: 0.7, alpha: 0.6, color: .white)
         }
-        for _ in 0..<scaled(26) {
-            sparkOut(texture: world == .candy ? "fx_star" : "fx_twinkle", at: origin, angle: .pi / 2 + .random(in: -0.7 * .pi ... 0.7 * .pi),
+        for _ in 0..<scaled(8) {
+            sparkOut(texture: "fx_sparkle", at: origin, angle: .pi / 2 + .random(in: -0.7 * .pi ... 0.7 * .pi),
                      speed: 480 + .random(in: -100...100), scale: 0.07 + .random(in: -0.015...0.015),
                      life: .random(in: 1.6...2.3), spin: 2.5, color: accent, tintFrom: 0)
-        }
-        for _ in 0..<10 {
-            let a = CGFloat.random(in: 0.2...(.pi - 0.2))
-            spawnMote(at: origin, velocity: CGVector(dx: cos(a) * 700, dy: sin(a) * 700))
         }
     }
 
     /// Completion confetti: beads and stars rain from the top edge.
     func celebrate() {
-        for n in 0..<40 {
-            run(.wait(forDuration: Double(n) * 0.05)) { [weak self] in
-                guard let self else { return }
-                let p = CGPoint(x: CGFloat.random(in: 20...(self.size.width - 20)), y: self.size.height - 10)
-                self.spawnMote(at: p, velocity: CGVector(dx: CGFloat.random(in: -120...120), dy: CGFloat.random(in: -200 ... -40)))
-            }
-        }
         let ring = mouthPoint ?? CGPoint(x: jellyRect.midX, y: jellyRect.midY)
         flash(at: ring, texture: "fx_ring", from: 0.2, to: 4, duration: 0.9, alpha: 0.9, color: accent)
         flash(at: ring, texture: "fx_glow", from: 0.5, to: 5, duration: 0.8, alpha: 0.9, color: .white)
@@ -200,7 +177,7 @@ final class SparkleScene: SKScene, SKPhysicsContactDelegate {
         flash(at: p, texture: "fx_splash", from: 0.1, to: 0.35 + 0.45 * s, duration: 0.45, alpha: 0.85, color: accent)
 
         // A few sparks thrown back into the screen
-        let sparks = emitter("fx_sparkle", count: 4 + Int(6 * s))
+        let sparks = emitter("fx_sparkle", count: 1 + Int(3 * s))
         sparks.position = p
         sparks.emissionAngle = inward
         sparks.emissionAngleRange = .pi * 0.7
@@ -308,7 +285,7 @@ final class SparkleScene: SKScene, SKPhysicsContactDelegate {
     func setFlow(_ level: Double) {
         if flowEmitter == nil {
             guard level > 0.02 else { return }
-            let e = emitter(world == .candy ? "fx_sparkle" : "fx_twinkle", count: 0)
+            let e = emitter("fx_sparkle", count: 0)
             e.particleBirthRate = 0
             e.particleLifetime = 1.3
             e.particleLifetimeRange = 0.5
@@ -333,7 +310,7 @@ final class SparkleScene: SKScene, SKPhysicsContactDelegate {
         e.position = origin
         e.particlePositionRange = CGVector(dx: jellyRect.width * 0.35, dy: 6)
         let calm = UIAccessibility.isReduceMotionEnabled ? 0.35 : 1
-        e.particleBirthRate = CGFloat(level < 0.03 ? 0 : 6 + 34 * level * calm)
+        e.particleBirthRate = CGFloat(level < 0.03 ? 0 : 2 + 12 * level * calm)
         e.particleSpeed = CGFloat(90 + 140 * level)
     }
 
@@ -341,7 +318,7 @@ final class SparkleScene: SKScene, SKPhysicsContactDelegate {
 
     private func spawnMote(at p: CGPoint, velocity: CGVector) {
         if moteLayer.children.count > 36 { moteLayer.children.first?.removeFromParent() }
-        let names = world == .candy ? ["fx_sugar", "fx_sugar", "fx_twinkle", "fx_star"] : ["fx_seed", "fx_leaf2", "fx_leaf3", "fx_twinkle"]
+        let names = world == .candy ? ["fx_sugar"] : ["fx_leaf2", "fx_leaf3"]
         let name = names.randomElement()!
         let d = CGFloat.random(in: 15...27)
         let node = SKSpriteNode(texture: Self.tex(name))
@@ -416,7 +393,7 @@ final class SparkleScene: SKScene, SKPhysicsContactDelegate {
             twinkle.particleAlphaSequence = SKKeyframeSequence(keyframeValues: [0, 1, 0] as [NSNumber], times: [0, 0.4, 1])
             twinkle.particleColor = .white
             ambientLayer.addChild(twinkle)
-            ambient.append((twinkle, 10))
+            ambient.append((twinkle, 4))
         case .nature:
             for name in ["fx_leaf1", "fx_leaf2", "fx_leaf3"] {
                 let leaf = emitter(name, count: 0)
@@ -608,7 +585,7 @@ final class SparkleScene: SKScene, SKPhysicsContactDelegate {
     func pokeSparkle(at uiPoint: CGPoint) {
         let p = toScene(uiPoint)
         flash(at: p, texture: "fx_splash", from: 0.2, to: 1.0, duration: 0.4, alpha: 0.6, color: accent)
-        let e = emitter(world == .candy ? "fx_star" : "fx_twinkle", count: 9)
+        let e = emitter("fx_sparkle", count: 6)
         e.position = p
         e.emissionAngle = .pi / 2
         e.emissionAngleRange = .pi * 0.9
@@ -657,7 +634,7 @@ final class SparkleScene: SKScene, SKPhysicsContactDelegate {
 
     func splash(at p: CGPoint) {
         flash(at: p, texture: "fx_splash", from: 0.2, to: 1.4, duration: 0.5, alpha: 0.9, color: accent)
-        let drops = emitter(world == .candy ? "fx_sugar" : "fx_seed", count: 16)
+        let drops = emitter(world == .candy ? "fx_sugar" : "fx_leaf2", count: 8)
         drops.position = p
         drops.emissionAngle = .pi / 2
         drops.emissionAngleRange = .pi * 0.8

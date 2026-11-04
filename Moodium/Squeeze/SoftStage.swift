@@ -336,7 +336,8 @@ final class SoftStage: NSObject, SCNSceneRendererDelegate, SCNPhysicsContactDele
     /// one every 45 ms; the phone gets a couple more since they stay on screen longer).
     func burst(_ intensity: Double, side: Double) {
         guard !templates.isEmpty else { return }
-        let count = 2 + Int((intensity * 4).rounded())
+        // the world's own models are the main thing that flies out of a squeeze
+        let count = 3 + Int((intensity * 4).rounded())
         for n in 0..<count {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.045 * Double(n)) { [weak self] in
                 guard let self else { return }
