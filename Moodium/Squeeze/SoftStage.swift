@@ -20,6 +20,9 @@ final class SoftStage: NSObject, SCNSceneRendererDelegate, SCNPhysicsContactDele
     /// Called on the main thread when a prop hits a screen edge (UIKit point, strength 0…1).
     var onEdgeHit: ((CGPoint, Double) -> Void)?
 
+    /// Light category that only Moodi's meshes take (other nodes keep the default 1).
+    private static let moodiLight = 1 << 4
+
     private enum Category {
         static let prop = 1 << 1
         static let wall = 1 << 2
@@ -108,6 +111,26 @@ final class SoftStage: NSObject, SCNSceneRendererDelegate, SCNPhysicsContactDele
         key.eulerAngles = SCNVector3(-0.6, -0.4, 0)
         scene.rootNode.addChildNode(key)
 
+        // Fill for Moodi only: the forest panorama is dark below the horizon, so Moodi's lower half
+        // got almost no light. A soft light from below and in front, reaching nothing but Moodi.
+        if world == .nature {
+            let fill = SCNNode()
+            fill.light = SCNLight()
+            fill.light?.type = .directional
+            fill.light?.intensity = 520
+            fill.light?.color = UIColor(red: 1, green: 0.96, blue: 0.9, alpha: 1)
+            fill.light?.categoryBitMask = Self.moodiLight
+            fill.eulerAngles = SCNVector3(0.55, 0.25, 0)     // shining up and into the screen
+            scene.rootNode.addChildNode(fill)
+            let under = SCNNode()
+            under.light = SCNLight()
+            under.light?.type = .ambient
+            under.light?.intensity = 160
+            under.light?.color = UIColor(red: 0.92, green: 0.95, blue: 1, alpha: 1)
+            under.light?.categoryBitMask = Self.moodiLight
+            scene.rootNode.addChildNode(under)
+        }
+
         scene.physicsWorld.gravity = SCNVector3(0, -7, 0)
         scene.physicsWorld.contactDelegate = self
         scene.physicsWorld.timeStep = 1.0 / 90
@@ -150,6 +173,7 @@ final class SoftStage: NSObject, SCNSceneRendererDelegate, SCNPhysicsContactDele
                     self.rescue = rig
                     self.jellyFit.childNodes.forEach { $0.removeFromParentNode() }
                     self.jellyFit.addChildNode(rig.node)
+                    rig.moodiNode.enumerateHierarchy { node, _ in node.categoryBitMask |= SoftStage.moodiLight }
                     rig.onSplash = { [weak self] in DispatchQueue.main.async { self?.onSplash?() } }
                     rig.onPop = { [weak self] in DispatchQueue.main.async { self?.onPop?() } }
                     rig.onFree = { [weak self] in DispatchQueue.main.async { self?.onFree?() } }

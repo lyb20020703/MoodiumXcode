@@ -112,38 +112,19 @@ final class SparkleScene: SKScene, SKPhysicsContactDelegate {
         flash(at: origin, texture: "fx_ring", from: 0.15, to: 0.8 + 0.6 * i, duration: 0.45, alpha: 0.85, color: accent)
         flash(at: origin, texture: "fx_glow", from: 0.4, to: 1.0 + 0.5 * i, duration: 0.3, alpha: 0.38, color: accent)
 
-        // Sparkles, biased up and away from the pressed side
-        let sparkle = emitter("fx_sparkle", count: 14 + Int(22 * i))
-        sparkle.position = origin
-        sparkle.emissionAngle = .pi / 2 - CGFloat(side) * 0.45
-        sparkle.emissionAngleRange = .pi * 1.1
-        sparkle.particleSpeed = 260 + 260 * i
-        sparkle.particleSpeedRange = 220
-        sparkle.particleLifetime = 0.9
-        sparkle.particleLifetimeRange = 0.5
-        sparkle.particleScale = 0.12
-        sparkle.particleScaleRange = 0.07
-        sparkle.particleScaleSpeed = -0.08
-        sparkle.particleAlphaSpeed = -0.9
-        sparkle.yAcceleration = -420
-        sparkle.particleRotationRange = .pi
-        sparkle.particleColorSequence = SKKeyframeSequence(keyframeValues: [UIColor.white, accent, accent], times: [0, 0.35, 1])
-        fire(sparkle, lifetime: 1.6)
-
-        let stars = emitter(world == .candy ? "fx_twinkle" : "fx_seed", count: 4 + Int(5 * i))
-        stars.position = origin
-        stars.emissionAngle = .pi / 2
-        stars.emissionAngleRange = .pi * 0.9
-        stars.particleSpeed = 320
-        stars.particleSpeedRange = 160
-        stars.particleLifetime = 1.3
-        stars.particleScale = 0.16
-        stars.particleScaleRange = 0.06
-        stars.particleAlphaSpeed = -0.7
-        stars.particleRotationSpeed = 3
-        stars.yAcceleration = -380
-        stars.particleColor = pastel.randomElement()!
-        fire(stars, lifetime: 1.8)
+        // Sparkles, biased up and away from the pressed side; they bounce off the screen edges
+        let up = CGFloat.pi / 2 - CGFloat(side) * 0.45
+        for _ in 0..<scaled(14 + Int(22 * i)) {
+            sparkOut(texture: "fx_sparkle", at: origin, angle: up + .random(in: -0.55 * .pi ... 0.55 * .pi),
+                     speed: 260 + 260 * i + .random(in: -110...110), scale: 0.12 + .random(in: -0.035...0.035),
+                     life: .random(in: 1.1...1.8), spin: .random(in: -2...2), color: accent, tintFrom: 0)
+        }
+        let star = pastel.randomElement()!
+        for _ in 0..<scaled(4 + Int(5 * i)) {
+            sparkOut(texture: world == .candy ? "fx_twinkle" : "fx_seed", at: origin, angle: .pi / 2 + .random(in: -0.45 * .pi ... 0.45 * .pi),
+                     speed: 320 + .random(in: -80...80), scale: 0.16 + .random(in: -0.03...0.03),
+                     life: .random(in: 1.7...2.4), spin: .random(in: -3...3), color: star, tintFrom: 1)
+        }
 
         // Bouncy beads that ricochet around the screen
         for _ in 0..<(3 + Int(5 * i)) {
@@ -161,20 +142,11 @@ final class SparkleScene: SKScene, SKPhysicsContactDelegate {
             guard let self else { return }
             self.flash(at: origin, texture: "fx_splash", from: 0.3, to: 2.6, duration: 0.7, alpha: 0.6, color: .white)
         }
-        let shower = emitter(world == .candy ? "fx_star" : "fx_twinkle", count: 26)
-        shower.position = origin
-        shower.emissionAngle = .pi / 2
-        shower.emissionAngleRange = .pi * 1.4
-        shower.particleSpeed = 480
-        shower.particleSpeedRange = 200
-        shower.particleLifetime = 1.5
-        shower.particleScale = 0.07
-        shower.particleScaleRange = 0.03
-        shower.particleAlphaSpeed = -0.6
-        shower.particleRotationSpeed = 2.5
-        shower.yAcceleration = -500
-        shower.particleColorSequence = SKKeyframeSequence(keyframeValues: [UIColor.white, accent], times: [0, 0.5])
-        fire(shower, lifetime: 2.2)
+        for _ in 0..<scaled(26) {
+            sparkOut(texture: world == .candy ? "fx_star" : "fx_twinkle", at: origin, angle: .pi / 2 + .random(in: -0.7 * .pi ... 0.7 * .pi),
+                     speed: 480 + .random(in: -100...100), scale: 0.07 + .random(in: -0.015...0.015),
+                     life: .random(in: 1.6...2.3), spin: 2.5, color: accent, tintFrom: 0)
+        }
         for _ in 0..<10 {
             let a = CGFloat.random(in: 0.2...(.pi - 0.2))
             spawnMote(at: origin, velocity: CGVector(dx: cos(a) * 700, dy: sin(a) * 700))
@@ -252,6 +224,80 @@ final class SparkleScene: SKScene, SKPhysicsContactDelegate {
         lastSplash = now
         edgeSplash(at: contact.contactPoint, strength: strength * 0.6)
         onMoteEdgeHit?(contact.contactPoint, strength)
+    }
+
+    // MARK: - Bouncing sparks
+
+    /// Squeeze sparkles and stars: moved by hand each frame so they can bounce off the screen
+    /// edges (emitter particles can't collide), slowing a little with every bounce.
+    private struct Spark {
+        let node: SKSpriteNode
+        var velocity: CGVector
+        var age: Double = 0
+        let life: Double
+        let spin: CGFloat
+        let scale: CGFloat
+        let tintFrom: CGFloat
+    }
+    private let sparkLayer = SKNode()
+    private var sparks: [Spark] = []
+    private var lastUpdate: TimeInterval?
+
+    private func scaled(_ count: Int) -> Int {
+        Int((Double(count) * (UIAccessibility.isReduceMotionEnabled ? 0.35 : 0.75)).rounded())
+    }
+
+    private func sparkOut(texture: String, at p: CGPoint, angle: CGFloat, speed: CGFloat, scale: CGFloat,
+                          life: Double, spin: CGFloat, color: UIColor, tintFrom: CGFloat) {
+        if sparkLayer.parent == nil { sparkLayer.zPosition = 25; addChild(sparkLayer) }
+        if sparks.count >= 160 { sparks.removeFirst().node.removeFromParent() }
+        let node = SKSpriteNode(texture: Self.tex(texture))
+        node.setScale(max(0.02, scale))
+        node.position = p
+        node.zRotation = .random(in: 0...(.pi * 2))
+        node.color = color
+        node.colorBlendFactor = tintFrom
+        node.blendMode = .add
+        sparkLayer.addChild(node)
+        sparks.append(Spark(node: node, velocity: CGVector(dx: cos(angle) * speed, dy: sin(angle) * speed),
+                            life: life, spin: spin, scale: max(0.02, scale), tintFrom: tintFrom))
+    }
+
+    override func update(_ currentTime: TimeInterval) {
+        let dt = min(1.0 / 30, max(0, currentTime - (lastUpdate ?? currentTime)))
+        lastUpdate = currentTime
+        guard !sparks.isEmpty else { return }
+        let ax = gravity.dx * 420, ay = gravity.dy * 420
+        let drag = 1 - 0.5 * CGFloat(dt)
+        var i = 0
+        while i < sparks.count {
+            var s = sparks[i]
+            s.age += dt
+            if s.age >= s.life {
+                s.node.removeFromParent()
+                sparks.remove(at: i)
+                continue
+            }
+            s.velocity.dx = (s.velocity.dx + ax * CGFloat(dt)) * drag
+            s.velocity.dy = (s.velocity.dy + ay * CGFloat(dt)) * drag
+            var p = s.node.position
+            p.x += s.velocity.dx * CGFloat(dt)
+            p.y += s.velocity.dy * CGFloat(dt)
+            // bounce: off any screen edge, losing a third of the speed
+            let r = s.node.frame.width * 0.3
+            if p.x < r { p.x = r; s.velocity.dx = abs(s.velocity.dx) * 0.65 }
+            if p.x > size.width - r { p.x = size.width - r; s.velocity.dx = -abs(s.velocity.dx) * 0.65 }
+            if p.y < r { p.y = r; s.velocity.dy = abs(s.velocity.dy) * 0.6 }
+            if p.y > size.height - r { p.y = size.height - r; s.velocity.dy = -abs(s.velocity.dy) * 0.65 }
+            s.node.position = p
+            s.node.zRotation += s.spin * CGFloat(dt)
+            let k = CGFloat(s.age / s.life)
+            s.node.alpha = k < 0.6 ? 1 : (1 - k) / 0.4
+            s.node.setScale(s.scale * (1 - 0.45 * k))
+            if s.tintFrom < 1 { s.node.colorBlendFactor = min(1, k / 0.35) }
+            sparks[i] = s
+            i += 1
+        }
     }
 
     // MARK: - Flow (free mode, rocking the bag)
