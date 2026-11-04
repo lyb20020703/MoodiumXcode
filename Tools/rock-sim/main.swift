@@ -7,25 +7,28 @@ var rng = SystemRandomNumberGenerator()
 func noise(_ a: Double) -> Double { Double.random(in: -a...a, using: &rng) }
 
 /// Runs a tilt curve (degrees over time) through the detector at 100 Hz.
-func run(_ name: String, seconds: Double, scale: Double = 1, holdMode: Bool = false, noiseAmp: Double = 0.01,
-         expect: ClosedRange<Int>, holds: Int? = nil, _ curve: (Double) -> Double) {
+func run(_ name: String, seconds: Double, scale: Double = 1, holdMode: Bool = false, noiseAmp: Double = 0.01, gyroNoise: Double = 0.6,
+         expect: ClosedRange<Int>, holds: Int? = nil, energy: ClosedRange<Double>? = nil, _ curve: (Double) -> Double) {
     var d = RockDetector(); d.scale = scale; d.holdMode = holdMode
-    var pulses = 0, holdEvents: [String] = []
+    var pulses = 0, holdEvents: [String] = [], units = 0.0, deepest = 0.0
     var prev = curve(0)
     var t = 0.0
     while t < seconds {
         let clean = curve(t)
         let v = clean + noise(noiseAmp)                 // fused gravity: small angle noise
-        let rate = (clean - prev) * 100 + noise(0.6)    // gyro: true rate plus ~0.6 °/s noise
+        let rate = (clean - prev) * 100 + noise(gyroNoise)    // gyro: true rate plus noise (0.6 °/s is a pessimistic default)
         prev = clean
         let r = d.feed(tilt: v, rate: rate, now: t)
         if r.pulse != nil { pulses += 1 }
+        units += r.flow; deepest = max(deepest, r.depth)
         if let h = r.hold { holdEvents.append(h == .began ? "B@\(String(format: "%.1f", t))" : "E@\(String(format: "%.1f", t))") }
         t += 0.01
     }
     let okP = expect.contains(pulses)
     let okH = holds.map { $0 == holdEvents.count } ?? true
-    print("\(okP && okH ? "PASS" : "FAIL")  \(name): \(pulses) squeezes (want \(expect))" + (holdMode ? "  holds \(holdEvents)" : ""))
+    let okE = energy.map { $0.contains(units) } ?? true
+    print("\(okP && okH && okE ? "PASS" : "FAIL")  \(name): \(pulses) squeezes (want \(expect)), energy \(String(format: "%.1f", units))"
+          + (energy.map { " (want \($0))" } ?? "") + ", pillow \(Int(deepest * 100))%" + (holdMode ? "  holds \(holdEvents)" : ""))
 }
 
 /// One press: dips to `depth` over `down` s, stays `hold` s, comes back over `up` s (with damped wobble).
@@ -60,9 +63,9 @@ run("用力按 3°，松手回弹 20%", seconds: 5, expect: 5...5) { t in
     let i = Int(t); return press(t, at: Double(i), depth: 3, down: 0.1, hold: 0.1, up: 0.15, wobble: 0.2)
 }
 // 6. only sensor noise
-run("放着不动（噪声 0.03°）", seconds: 10, noiseAmp: 0.03, expect: 0...0) { _ in 0 }
+run("放着不动（噪声 0.03°）", seconds: 10, noiseAmp: 0.03, expect: 0...0, energy: 0...1) { _ in 0 }
 // 7. slow drift 2° over 8 s (phone settling into the bag)
-run("慢慢下沉 2°/8 秒", seconds: 10, expect: 0...0) { t in min(2, t / 4) }
+run("慢慢下沉 2°/8 秒", seconds: 10, expect: 0...0, energy: 0...2) { t in min(2, t / 4) }
 // 8. phone rests tilted 1.5°, then presses on both sides
 run("本身斜放 1.5° 再左右按 0.25°", seconds: 6, expect: 4...4) { t in
     1.5 + (t > 2 ? press(t, at: 2.5, depth: 0.25) + press(t, at: 3.5, depth: -0.25) + press(t, at: 4.5, depth: 0.25) + press(t, at: 5.3, depth: -0.25) : 0)
@@ -79,3 +82,12 @@ run("回弹很大 35%（极端情况，仅参考，可能多算）", seconds: 5,
 run("呼吸模式按住 4 秒 ×2", seconds: 12, holdMode: true, expect: 2...2, holds: 4) { t in
     press(t, at: 1, depth: 1.5, down: 0.4, hold: 4, up: 0.6) + press(t, at: 7, depth: -1.5, down: 0.4, hold: 4, up: 0.6)
 }
+
+// 10. like a spirit level: tiny presses that never count as a squeeze still fill the bar
+run("极轻 0.05°，每秒一次，真机级噪声（不算捏，但进度要涨）", seconds: 6, gyroNoise: 0.15, expect: 0...0, energy: 0.5...40) { t in
+    let i = Int(t); return press(t, at: Double(i), depth: 0.05, down: 0.12, hold: 0.05, up: 0.18)
+}
+run("轻按 0.18°，真机级噪声", seconds: 6, noiseAmp: 0.005, gyroNoise: 0.15, expect: 6...6) { t in
+    let i = Int(t); return press(t, at: Double(i), depth: 0.18, down: 0.2, hold: 0.2, up: 0.3)
+}
+run("放着不动，真机级噪声", seconds: 10, noiseAmp: 0.005, gyroNoise: 0.15, expect: 0...0, energy: 0...0.5) { _ in 0 }

@@ -15,6 +15,9 @@ final class PressSensor {
     /// Gravity in screen coordinates (x right, y up, in g) and the rock rate (rad/s, + toward screen-right).
     var onMotion: ((SIMD2<Double>, Double) -> Void)?
     var onShake: (() -> Void)?
+    /// Live, about 60 times a second: energy units earned by the motion since the last call, and
+    /// 0…1 how far the phone is tipped from where it rests (for the pillow to follow).
+    var onLive: ((Double, Double) -> Void)?
     /// The base is being held down (the phone stays tipped) / let go. Used by breath mode.
     var onHold: ((Bool) -> Void)?
     var isHeld: Bool { detector.isHeld }
@@ -41,6 +44,8 @@ final class PressSensor {
     private var lastShake: TimeInterval = 0
     private var lastMotionSend: TimeInterval = 0
     private var lastSample: TimeInterval?
+    private var pendingFlow = 0.0
+    private var lastLiveSend: TimeInterval = 0
 
     // Which way the phone actually rocks on the bag. It depends on how the phone was laid down,
     // so we learn it from the gyro: the main axis of recent rotation, in the device's x/y plane.
@@ -157,6 +162,12 @@ final class PressSensor {
 
         let result = detector.feed(tilt: tilt, rate: rate * 180 / .pi, now: now,
                                    muted: !pulsesEnabled || now < suppressUntil)
+        pendingFlow += result.flow
+        if now - lastLiveSend > 1.0 / 60 {
+            lastLiveSend = now
+            onLive?(pendingFlow, result.depth)
+            pendingFlow = 0
+        }
         if let pulse = result.pulse { onPulse?(Pulse(intensity: pulse.intensity, side: pulse.side * side)) }
         if let hold = result.hold { onHold?(hold == .began) }
     }

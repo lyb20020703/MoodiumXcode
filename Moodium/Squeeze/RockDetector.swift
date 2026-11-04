@@ -30,6 +30,15 @@ struct RockDetector {
     static let holdOff = 0.25
     /// Shortest time between two squeezes.
     static let gap = 0.12
+    /// Continuous energy, like the Level in Apple's Measure app: no threshold to reach, any
+    /// back-and-forth rocking above this phone's own sensor noise fills the bar, faster rocking
+    /// fills it faster, up to `flowMax` units/s (energy is out of 100); `flowSoft` °/s above the
+    /// noise gets ~63 % of the max. The noise floor is measured live, within `flowFloor`.
+    static let flowFloor = 0.12...0.6
+    static let flowSoft = 0.8
+    static let flowMax = 12.0
+    /// Tilt (°) that shows the pillow fully pressed.
+    static let fullDepth = 0.6
 
     /// Sensitivity: below 1 is more sensitive.
     var scale = 1.0
@@ -49,6 +58,9 @@ struct RockDetector {
     private var peakTime = -Double.infinity
     private var lastPulse = -Double.infinity
     private var lastTime: Double?
+    private var drift = 0.0         // rate (°/s) slowly averaged: steady settling, not rocking
+    private var wobble = 0.0        // |rate − drift| smoothed: how much the phone rocks right now
+    private var noise = 0.15        // quietest recent `wobble`: this phone's sensor noise
     private var quietFor = 0.0
     private var tipSince: Double?
     private var settleSince: Double?
@@ -66,14 +78,16 @@ struct RockDetector {
 
     /// One sample. `tilt` in degrees (+ = right edge lower), `rate` its speed in °/s,
     /// `muted` while our own haptics shake the phone or squeezes are off.
-    /// Returns a squeeze and/or a hold change; `hold` only fires in hold mode.
-    mutating func feed(tilt: Double, rate: Double, now: Double, muted: Bool = false) -> (pulse: Pulse?, hold: Hold?) {
+    /// Returns a squeeze and/or a hold change (`hold` only fires in hold mode), `flow`: energy units
+    /// earned by this sample's motion, and `depth`: 0…1 how far the phone is tipped from rest.
+    mutating func feed(tilt: Double, rate: Double, now: Double, muted: Bool = false)
+        -> (pulse: Pulse?, hold: Hold?, flow: Double, depth: Double) {
         let dt = min(0.05, max(0, now - (lastTime ?? now)))
         lastTime = now
         guard let r = rest else {
             rest = tilt; anchor = tilt; extreme = tilt; direction = 0; armed = true; swingRate = 0
-            if isHeld { isHeld = false; return (nil, holdMode ? .ended : nil) }
-            return (nil, nil)
+            if isHeld { isHeld = false; return (nil, holdMode ? .ended : nil, 0, 0) }
+            return (nil, nil, 0, 0)
         }
         let off = tilt - r
         smoothRate += (abs(rate) - smoothRate) * 0.35
@@ -116,6 +130,15 @@ struct RockDetector {
             pulse = Pulse(intensity: min(1, max(0.2, intensity)), side: direction)
         }
 
+        // Continuous energy: only the back-and-forth part of the motion, above the sensor noise.
+        drift += (rate - drift) * min(1, dt / 0.6)
+        wobble += (abs(rate - drift) - wobble) * 0.35
+        noise += (wobble - noise) * min(1, dt / (wobble < noise ? 1 : 20))
+        let floor = min(Self.flowFloor.upperBound, max(Self.flowFloor.lowerBound, noise * 3.5)) * scale
+        let moving = max(0, wobble - floor)
+        let flow = muted ? 0 : Self.flowMax * (1 - exp(-moving / (Self.flowSoft * scale))) * dt
+        let depth = min(1, abs(off) / (Self.fullDepth * scale))
+
         let hold = holdMode ? trackHold(off, tilt: tilt, now: now, muted: muted) : nil
         if !holdMode, isHeld { isHeld = false; tipSince = nil }
 
@@ -125,7 +148,7 @@ struct RockDetector {
         } else if quietFor > 0.6 {
             rest = r + off * min(1, dt / 1.0)
         }
-        return (pulse, hold)
+        return (pulse, hold, flow, depth)
     }
 
     /// The deepest press of the last moment: kept for 0.4 s, then fading.

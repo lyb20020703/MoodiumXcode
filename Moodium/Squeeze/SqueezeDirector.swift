@@ -88,6 +88,9 @@ final class SqueezeDirector: ObservableObject {
     private var holdStart: Double?
     private var lastRhythmStart: Double?
     private var units: Double = 0   // energy out of 100
+    private var baseFlow = 0.0      // base motion energy not paid yet
+    private var lastFlowPay = 0.0
+    private var baseDepth = 0.0     // the pillow following the base, 0…1
 
     init(world: MoodWorld) {
         self.world = world
@@ -109,6 +112,7 @@ final class SqueezeDirector: ObservableObject {
         sensor.onPulse = { [weak self] pulse in self?.pulse(intensity: pulse.intensity, side: pulse.side) }
         sensor.onHold = { [weak self] down in self?.baseHold(down) }
         sensor.onMotion = { [weak self] gravity, _ in self?.applyMotion(gravity) }
+        sensor.onLive = { [weak self] flow, depth in self?.baseLive(flow: flow, depth: depth) }
         sensor.onShake = { [weak self] in
             self?.stage.scatter()
             self?.sparkles.scatter()
@@ -294,11 +298,37 @@ final class SqueezeDirector: ObservableObject {
         // a finger on the screen also rocks the phone on the base: that press already counts
         guard touchStart == nil, CACurrentMediaTime() >= touchQuietUntil else { return }
         switch mode {
-        case .free: squeeze(intensity: intensity, side: side)
+        case .free:
+            // the base already fills the bar continuously (`baseLive`); a counted squeeze adds a little more
+            guard acceptingSqueezes, phase != .complete else { return }
+            squeezeEffects(intensity: intensity, side: side)
+            pay(units: 1.2 + 1.5 * intensity)
         case .rhythm: rhythmHit(intensity: intensity, side: side)
         case .breath:
             // the hold detector drives breathing; a quick tap still nudges the pillow
             if holdStart == nil { stage.kick(intensity * 0.5, side: side) }
+        }
+    }
+
+    /// Continuous base input, like a spirit level: the pillow sinks as far as the phone is tipped,
+    /// and in free mode every bit of rocking adds energy, with no threshold to reach first.
+    private func baseLive(flow: Double, depth: Double) {
+        let now = CACurrentMediaTime()
+        let free = touchStart == nil && holdStart == nil && now >= touchQuietUntil
+        if mode != .breath, free {
+            // ease toward the tilt so sensor jitter doesn't shimmer the pillow
+            baseDepth += (depth - baseDepth) * 0.5
+            stage.setHold(baseDepth * 0.85)
+        } else {
+            baseDepth = 0
+        }
+        guard mode == .free, free else { baseFlow = 0; return }
+        baseFlow += flow
+        if baseFlow >= 0.5 || (baseFlow > 0 && now - lastFlowPay > 0.15) {
+            lastFlowPay = now
+            if phase == .intro, acceptingSqueezes { phase = .playing }
+            pay(units: baseFlow, effects: false)
+            baseFlow = 0
         }
     }
 
