@@ -202,15 +202,15 @@ struct RhythmGuide: View {
     private func grade(_ hit: RhythmHit, age: Double) -> some View {
         let (word, color): (String, Color) = {
             switch hit.grade {
-            case .perfect: return (app.t("完美！", "Perfect!"), .white)
-            case .good: return (app.t("不错", "Nice"), .white)
-            case .early: return (app.t("早了一点", "A bit early"), Color(hex: 0xFFE3A3))
-            case .late: return (app.t("晚了一点", "A bit late"), Color(hex: 0xFFE3A3))
+            case .perfect: return (app.t("刚刚好", "Just right"), .white)
+            case .good: return (app.t("很好", "Nice"), .white)
+            case .early: return (app.t("等光圈再近一点", "Wait for the ring"), .white.opacity(0.85))
+            case .late: return (app.t("跟着下一圈就好", "Catch the next one"), .white.opacity(0.85))
             }
         }()
         let pop = age < 0.15 ? 1.25 - age / 0.15 * 0.25 : 1
         return Text(word)
-            .font(.moodium(hit.grade == .perfect ? 20 : 16, .bold))
+            .font(.moodium(hit.accuracy > 0 ? 18 : 15, hit.accuracy > 0 ? .bold : .semibold))
             .foregroundStyle(color)
             .shadow(color: hit.accuracy > 0 ? accent : .black.opacity(0.4), radius: 6)
             .padding(.horizontal, 10).padding(.vertical, 2)
@@ -240,7 +240,7 @@ struct BreathGuide: View {
             let swell: CGFloat = {
                 switch director.breathStep {
                 case .inhale: return CGFloat(ease(min(1, held / 4)))
-                case .exhale: return CGFloat(ease(max(0, 1 - since / 5)))
+                case .exhale: return CGFloat(ease(max(0, 1 - since / director.exhaleSeconds)))
                 case .ready: return CGFloat(0.06 + 0.05 * sin(since * 1.2))
                 }
             }()
@@ -284,7 +284,11 @@ struct BreathGuide: View {
                 if held < 3 { return (app.t("吸气 \(Int(held) + 1)", "Breathe in \(Int(held) + 1)"), .white) }
                 if held <= 5.5 { return (app.t("松开，呼气", "Let go, breathe out"), green) }
                 return (app.t("可以松开啦", "Let go now"), Color(hex: 0xFFE3A3))
-            case .exhale: return (app.t("慢慢呼气", "Breathe out slowly"), .white)
+            case .exhale:
+                // a long, slow breath out calms the body most: count it down
+                let left = Int(ceil(director.exhaleSeconds - since))
+                if left > 0 { return (app.t("慢慢呼气 \(left)", "Breathe out \(left)"), .white) }
+                return (app.t("准备好了再吸气", "Breathe in when ready"), .white.opacity(0.85))
             case .ready: return (app.t("按住，吸气", "Hold to breathe in"), .white.opacity(0.85))
             }
         }()
@@ -294,7 +298,8 @@ struct BreathGuide: View {
                 .foregroundStyle(color)
                 .monospacedDigit()
                 .contentTransition(.numericText())
-                .id(director.breathStep == .inhale && held >= 3 ? "window" : "\(director.breathStep)")
+                .id(director.breathStep == .inhale && held >= 3 ? "window"
+                    : director.breathStep == .exhale && since >= director.exhaleSeconds ? "rest" : "\(director.breathStep)")
             if director.breaths > 0 {
                 HStack(spacing: 4) {
                     ForEach(0..<min(6, max(3, director.breaths)), id: \.self) { i in

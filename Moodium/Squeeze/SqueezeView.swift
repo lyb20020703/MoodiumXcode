@@ -273,6 +273,16 @@ struct SqueezeView: View {
                 }
                 .buttonStyle(GlassButtonStyle(compact: true))
             }
+            // nothing more to do: just stay with Moodi in the world for a while
+            Button { director.dismissCard() } label: {
+                Text(app.t("先在这里待一会儿", "Just stay here a while"))
+                    .font(.moodium(13, .semibold))
+                    .foregroundStyle(.white.opacity(0.8))
+                    .underline(color: .white.opacity(0.35))
+                    .padding(.vertical, 4)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
         }
         .padding(.horizontal, 22).padding(.vertical, 12)
         .glass(RoundedRectangle(cornerRadius: 24, style: .continuous), tint: Palette.smoke, amount: 0.55)

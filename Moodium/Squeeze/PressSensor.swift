@@ -192,7 +192,8 @@ final class Haptics {
 
     func edge(_ strength: Double) {
         let now = CACurrentMediaTime()
-        guard now - lastEdge > 0.07 else { return }
+        // a prop hitting the edge is a light tick, not a rattle: only firm hits, a few per second
+        guard strength > 0.35, now - lastEdge > 0.22 else { return }
         lastEdge = now
         light.impactOccurred(intensity: CGFloat(0.25 + 0.5 * min(1, strength)))
         sensor?.suppress(for: 0.06)

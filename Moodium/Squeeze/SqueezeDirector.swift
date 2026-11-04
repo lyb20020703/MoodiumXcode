@@ -69,6 +69,7 @@ final class SqueezeDirector: ObservableObject {
     private var hasTaught = false
     private var lastEncourage = Date.distantPast
     private var lastNudge = Date.distantPast
+    private var lastBounceSound: CFTimeInterval = 0
     private var pending: [DispatchWorkItem] = []
     private var voiceTimer: Timer?
     private var idleTimer: Timer?
@@ -111,7 +112,10 @@ final class SqueezeDirector: ObservableObject {
             guard let self else { return }
             self.sparkles.edgeSplash(at: self.sparkles.toScene(point), strength: strength)
             self.haptics.edge(strength)
-            self.audio.sfx("sfx_bounce", volume: Float(0.12 + 0.3 * strength))
+            let now = CACurrentMediaTime()
+            guard now - self.lastBounceSound > 0.12 else { return }
+            self.lastBounceSound = now
+            self.audio.sfx("sfx_bounce", volume: Float(0.06 + 0.18 * strength))
         }
         stage.onReady = { [weak self] in
             guard let self, self.running, !self.introStarted, !self.guiding else { return }
@@ -279,7 +283,7 @@ final class SqueezeDirector: ObservableObject {
         }
         if stage.usesMeshMoodi { stage.onSplash = splash; stage.rescueFallIn() }
         else { sparkles.moodiFallIn(onSplash: splash) }
-        after(1.75) { [weak self] in self?.say("K1", clarity: 1) }
+        after(1.75) { [weak self] in self?.say("K1", clarity: 1, volume: 0.45) }
     }
 
     private func beginPlay() {
@@ -327,6 +331,9 @@ final class SqueezeDirector: ObservableObject {
     }
 
     var rhythmPeriod: Double { rhythm?.adaptive == true ? rhythm!.adaptiveInterval : params.rhythmPeriod }
+
+    /// How long a full breath out is (5 s, 6 s when tense), for the exhale countdown.
+    var exhaleSeconds: Double { params.exhaleOk }
 
     /// Seconds the base (or screen) has been held, for the breath tide.
     func heldSeconds(_ now: Double = CACurrentMediaTime()) -> Double { holdStart.map { now - $0 } ?? 0 }
@@ -523,7 +530,7 @@ final class SqueezeDirector: ObservableObject {
             say(line.1)
         } else if effects, squeezes == 1 {
             say("K4")
-        } else if effects, squeezes > 4, Date().timeIntervalSince(lastEncourage) > 10, !audio.isSpeaking, Double.random(in: 0...1) < 0.3 {
+        } else if effects, squeezes > 4, Date().timeIntervalSince(lastEncourage) > 18, !audio.isSpeaking, Double.random(in: 0...1) < 0.3 {
             lastEncourage = Date()
             say(["K8a", "K8b", "K8c"].randomElement()!)
         }
@@ -630,9 +637,10 @@ final class SqueezeDirector: ObservableObject {
     // MARK: - Idle
 
     private func checkIdle() {
-        guard phase == .playing, energy > 0, energy < 1, holdStart == nil else { return }
+        // a pause is fine: only a soft call after a long quiet, at most every 1.5 min, never in breath mode
+        guard phase == .playing, energy > 0, energy < 1, holdStart == nil, mode != .breath else { return }
         let now = Date()
-        if now.timeIntervalSince(lastSqueeze) > 12, now.timeIntervalSince(lastNudge) > 30, !audio.isSpeaking {
+        if now.timeIntervalSince(lastSqueeze) > 25, now.timeIntervalSince(lastNudge) > 90, !audio.isSpeaking {
             lastNudge = now
             say("K9")
         }
@@ -729,11 +737,11 @@ final class SqueezeDirector: ObservableObject {
 
     // MARK: - Voice
 
-    private func say(_ id: String, muffled: Bool = false, clarity: Double? = nil, completion: (() -> Void)? = nil) {
+    private func say(_ id: String, muffled: Bool = false, clarity: Double? = nil, volume: Float = 1, completion: (() -> Void)? = nil) {
         let lang = language.rawValue
         let file = muffled ? "moodi_vo_\(id)_\(lang)_muffled" : "moodi_vo_\(id)_\(lang)"
         let c = clarity ?? (muffled ? 1 : 0.15 + 0.85 * energy)
-        let duration = audio.voice(file, clarity: c, completion: completion)
+        let duration = audio.voice(file, clarity: c, volume: volume, completion: completion)
         stage.withRescue { $0.talk = audio.isSpeaking ? max(0.6, audio.voiceLevel) : 0 }
         let text = VoiceLines.text(id, language)
         withAnimation(.easeOut(duration: 0.2)) { subtitle = text }

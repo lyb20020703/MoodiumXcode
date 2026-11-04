@@ -115,7 +115,7 @@ final class AudioDirector {
     /// Plays a Moodi line. `clarity` 0 = deep inside the jelly, 1 = out in the open.
     /// Returns the line's duration in seconds.
     @discardableResult
-    func voice(_ file: String, clarity: Double, completion: (() -> Void)? = nil) -> TimeInterval {
+    func voice(_ file: String, clarity: Double, volume: Float = 1, completion: (() -> Void)? = nil) -> TimeInterval {
         guard let url = Res.url(file, "wav"), let audio = try? AVAudioFile(forReading: url) else {
             completion?()
             return 0
@@ -151,6 +151,7 @@ final class AudioDirector {
         let token = voiceToken
         isSpeaking = true
         duck(true)
+        voiceNode.volume = volume
         voiceNode.scheduleFile(audio, at: nil) { [weak self] in
             DispatchQueue.main.async {
                 guard let self, token == self.voiceToken else { return }

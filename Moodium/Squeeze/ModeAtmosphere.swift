@@ -104,7 +104,7 @@ struct ModeAtmosphere: View {
         let swell: Double = {
             switch director.breathStep {
             case .inhale: return ease(min(1, held / 4))
-            case .exhale: return ease(max(0, 1 - since / 5))
+            case .exhale: return ease(max(0, 1 - since / director.exhaleSeconds))
             case .ready: return 0.06 + 0.05 * sin(since * 1.2)
             }
         }()
