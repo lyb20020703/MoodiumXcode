@@ -139,7 +139,7 @@ enum MoodCopy {
         "rec.calm": ("这份平静很珍贵，去森林里慢慢待一会儿", "Let's keep this calm going in Nature World"),
         "rec.neutral": ("都可以哦，要不先去森林里走走？", "Either is fine. How about Nature World?"),
         "rec.low": ("给自己一点甜吧，轻轻捏一捏，充充电", "A little sweetness might help. Let's try Candy World"),
-        "rec.tense": ("先跟着底座慢慢呼吸，让自己松下来", "Let's slow down and breathe together in Nature World"),
+        "rec.tense": ("先跟着感官袋慢慢呼吸，让自己松下来", "Let's slow down and breathe together in Nature World"),
         "rec.today": ("现在：{mood}", "Now: {mood}"),
         "rec.other": ("也想去另一个？完全可以", "Prefer the other one? That's fine too"),
         "rec.cta": ("去{world}", "Go to {world}"),

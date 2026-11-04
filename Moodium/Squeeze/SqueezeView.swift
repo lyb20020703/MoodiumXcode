@@ -11,6 +11,7 @@ struct SqueezeView: View {
     @StateObject private var director: SqueezeDirector
     @State private var showSettings = false
     @State private var showHelp = false
+    @State private var showBagGuide = false
     @Environment(\.hinge) private var hinge
     @StateObject private var fireworks = FireworksShow()
     @State private var currentFold: TabletopFold?
@@ -85,7 +86,13 @@ struct SqueezeView: View {
                         .transition(.scale(scale: 0.9).combined(with: .opacity))
                 }
 
-                if showHelp { ModeHelpCard(world: world, isPresented: $showHelp).transition(.opacity) }
+                if showHelp {
+                    ModeHelpCard(world: world, isPresented: $showHelp) { openBagGuide() }.transition(.opacity)
+                }
+                if showBagGuide {
+                    BagGuide(world: world, probe: director.probe) { closeBagGuide() }
+                        .transition(.opacity.combined(with: .scale(scale: 0.96)))
+                }
                 if showSettings { SettingsPanel(isPresented: $showSettings).transition(.opacity) }
             }
             .foregroundStyle(.white)
@@ -96,7 +103,12 @@ struct SqueezeView: View {
         .onAppear {
             configureDirector()
             fireworks.configure(world: world)
+            // the first time in any world, show how to use the bag before Moodi falls in
+            if !app.bagGuided { showBagGuide = true; director.beginGuide() }
             director.start()
+            #if MOODIUM_AUTOPILOT
+            if ProcessInfo.processInfo.environment["HELP"] != nil { showHelp = true }
+            #endif
         }
         .onReceive(director.skyCues) { cue in launchFireworks(cue) }
         .onDisappear { director.stop() }
@@ -109,6 +121,17 @@ struct SqueezeView: View {
 
     private func configureDirector() {
         director.configure(language: app.language, sensitivity: app.sensitivity, mood: app.preSample?.mood)
+    }
+
+    private func openBagGuide() {
+        director.beginGuide()
+        withAnimation(.easeOut(duration: 0.3)) { showBagGuide = true }
+    }
+
+    private func closeBagGuide() {
+        app.bagGuided = true
+        withAnimation(.easeOut(duration: 0.3)) { showBagGuide = false }
+        director.endGuide()
     }
 
     private func wish() {
@@ -223,7 +246,7 @@ struct SqueezeView: View {
     }
 
     private var hintText: String {
-        app.t("轻压底座，或按住屏幕再松开，把 Moodi 挤出来", "Press the base, or press and release the screen, to squeeze Moodi out")
+        app.t("轻压感官袋，或按住屏幕再松开，把 Moodi 挤出来", "Press the bag, or press and release the screen, to squeeze Moodi out")
     }
 
     /// After Moodi is out: a small card in the middle of the screen with two choices.

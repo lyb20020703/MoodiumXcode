@@ -26,6 +26,7 @@ final class AppModel: ObservableObject {
         static let muted = "Moodium.Muted"
         static let lastWorld = "Moodium.LastWorld"
         static let onboarded = "Moodium.Onboarded"
+        static let bagGuided = "Moodium.BagGuided"
     }
 
     @Published var stage: Stage = .opening
@@ -52,6 +53,12 @@ final class AppModel: ObservableObject {
     var onboarded: Bool {
         get { defaults.bool(forKey: Key.onboarded) }
         set { defaults.set(newValue, forKey: Key.onboarded) }
+    }
+
+    /// The sensory-bag guide was shown once (on the first visit to a world).
+    var bagGuided: Bool {
+        get { defaults.bool(forKey: Key.bagGuided) }
+        set { defaults.set(newValue, forKey: Key.bagGuided) }
     }
 
     func goHome() { stage = .home }

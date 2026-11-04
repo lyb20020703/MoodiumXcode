@@ -16,7 +16,7 @@ final class PressSensor {
     var onMotion: ((SIMD2<Double>, Double) -> Void)?
     var onShake: (() -> Void)?
     /// Live, about 60 times a second: energy units earned by the motion since the last call, and
-    /// 0…1 how far the phone is tipped from where it rests (for the pillow to follow).
+    /// -1…1 how far the phone is tipped from where it rests (+ = screen-right side down).
     var onLive: ((Double, Double) -> Void)?
     /// The base is being held down (the phone stays tipped) / let go. Used by breath mode.
     var onHold: ((Bool) -> Void)?
@@ -165,7 +165,7 @@ final class PressSensor {
         pendingFlow += result.flow
         if now - lastLiveSend > 1.0 / 60 {
             lastLiveSend = now
-            onLive?(pendingFlow, result.depth)
+            onLive?(pendingFlow, result.depth * side)
             pendingFlow = 0
         }
         if let pulse = result.pulse { onPulse?(Pulse(intensity: pulse.intensity, side: pulse.side * side)) }

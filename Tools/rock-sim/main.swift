@@ -20,7 +20,7 @@ func run(_ name: String, seconds: Double, scale: Double = 1, holdMode: Bool = fa
         prev = clean
         let r = d.feed(tilt: v, rate: rate, now: t)
         if r.pulse != nil { pulses += 1 }
-        units += r.flow; deepest = max(deepest, r.depth)
+        units += r.flow; deepest = max(deepest, abs(r.depth))
         if let h = r.hold { holdEvents.append(h == .began ? "B@\(String(format: "%.1f", t))" : "E@\(String(format: "%.1f", t))") }
         t += 0.01
     }

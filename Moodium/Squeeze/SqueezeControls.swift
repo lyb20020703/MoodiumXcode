@@ -68,9 +68,11 @@ struct ModeHelpCard: View {
     @EnvironmentObject private var app: AppModel
     let world: MoodWorld
     @Binding var isPresented: Bool
+    /// Shows the sensory-bag guide again.
+    var onBagGuide: (() -> Void)? = nil
 
     var body: some View {
-        let thing = app.t("底座或屏幕", "the base or the screen")
+        let thing = app.t("感官袋或屏幕", "the bag or the screen")
         ZStack {
             Color.black.opacity(0.35).ignoresSafeArea().onTapGesture { close() }
             VStack(alignment: .leading, spacing: 14) {
@@ -87,6 +89,15 @@ struct ModeHelpCard: View {
                 row("mode_icon_breath", app.t("呼吸", "Breath"),
                     app.t("按住\(thing)慢慢吸气 3–5 秒，松开慢慢呼气。呼吸得越舒服，能量越多。",
                           "Hold \(thing) and breathe in for 3–5 s, then let go and breathe out. Calm breaths earn the most."))
+                if let onBagGuide {
+                    Button {
+                        isPresented = false
+                        onBagGuide()
+                    } label: {
+                        Label(app.t("感官袋怎么放？再看一遍", "How to use the sensory bag"), systemImage: "hand.point.down.fill")
+                    }
+                    .buttonStyle(GlassButtonStyle(compact: true))
+                }
             }
             .foregroundStyle(.white)
             .padding(22)

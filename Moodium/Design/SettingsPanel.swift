@@ -20,14 +20,14 @@ struct SettingsPanel: View {
                 row(app.t("语言", "Language")) {
                     GlassSegmented(options: [(Language.zh, "中文"), (Language.en, "English")], selection: $app.language)
                 }
-                row(app.t("底座灵敏度", "Base sensitivity")) {
+                row(app.t("感官袋灵敏度", "Bag sensitivity")) {
                     GlassSegmented(options: [(Sensitivity.gentle, app.t("灵敏", "High")),
                                              (Sensitivity.normal, app.t("适中", "Medium")),
                                              (Sensitivity.firm, app.t("稳重", "Low"))],
                                    selection: $app.sensitivity)
                 }
-                Text(app.t("两种方式随时都能捏捏：把手机放在底座中间按压底座两侧，或者直接按住屏幕再松开。",
-                           "Two ways to squeeze, both always on: rest the phone on the base and press either side, or press and release the screen."))
+                Text(app.t("两种方式随时都能捏捏：把手机放在感官袋中间按压袋子两侧，或者直接按住屏幕再松开。",
+                           "Two ways to squeeze, both always on: rest the phone on the sensory bag and press either side, or press and release the screen."))
                     .font(.moodium(13))
                     .foregroundStyle(Palette.textMuted)
                     .fixedSize(horizontal: false, vertical: true)

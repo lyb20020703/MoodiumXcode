@@ -88,6 +88,9 @@ final class SqueezeDirector: ObservableObject {
     private var holdStart: Double?
     private var lastRhythmStart: Double?
     private var units: Double = 0   // energy out of 100
+    /// The sensory-bag guide is open: base motion feeds its try-it meter, the story waits.
+    private(set) var guiding = false
+    let probe = BagProbe()
     private var baseFlow = 0.0      // base motion energy not paid yet
     private var lastFlowPay = 0.0
     private var baseDepth = 0.0     // the pillow following the base, 0…1
@@ -105,7 +108,7 @@ final class SqueezeDirector: ObservableObject {
             self.audio.sfx("sfx_bounce", volume: Float(0.12 + 0.3 * strength))
         }
         stage.onReady = { [weak self] in
-            guard let self, self.running, !self.introStarted else { return }
+            guard let self, self.running, !self.introStarted, !self.guiding else { return }
             self.runIntro()
         }
         stage.onPop = { [weak self] in self?.meshPop() }
@@ -161,7 +164,10 @@ final class SqueezeDirector: ObservableObject {
         tickTimer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak self] _ in
             MainActor.assumeIsolated { self?.tick() }
         }
-        after(0.6) { [weak self] in guard let self, self.stage.modelsReady, !self.introStarted else { return }; self.runIntro() }
+        after(0.6) { [weak self] in
+            guard let self, self.stage.modelsReady, !self.introStarted, !self.guiding else { return }
+            self.runIntro()
+        }
     }
 
     func stop() {
@@ -191,6 +197,34 @@ final class SqueezeDirector: ObservableObject {
         sensor.start()
         audio.resumeAll()
         sparkles.isPaused = false
+    }
+
+    // MARK: - Sensory bag guide
+
+    /// Open the guide: until `endGuide`, base motion goes to the try-it meter (and on the first
+    /// visit Moodi's fall-in waits).
+    func beginGuide() {
+        guiding = true
+        probe.progress = 0
+        probe.tilt = 0
+        probe.lastMove = .distantPast
+    }
+
+    func endGuide() {
+        guiding = false
+        if running, stage.modelsReady, !introStarted { runIntro() }
+    }
+
+    private func feedProbe(tilt: Double? = nil, earned: Double) {
+        if let tilt { probe.tilt += (tilt - probe.tilt) * 0.5 }
+        guard earned > 0 else { return }
+        let before = probe.progress
+        probe.progress = min(1, probe.progress + earned)
+        probe.lastMove = Date()
+        if before < 1, probe.progress >= 1 {
+            haptics.success()
+            audio.sfx("sfx_chime", volume: 0.4)
+        }
     }
 
     /// The pillow's screen rect changed (layout or rotation).
@@ -295,6 +329,12 @@ final class SqueezeDirector: ObservableObject {
 
     /// Sensor pulse: one squeeze of the base.
     private func pulse(intensity: Double, side: Double) {
+        if guiding {
+            haptics.squeeze(0.3 + 0.3 * intensity)
+            audio.sfx("sfx_squish", volume: 0.2)
+            feedProbe(earned: 0.12)
+            return
+        }
         // a finger on the screen also rocks the phone on the base: that press already counts
         guard touchStart == nil, CACurrentMediaTime() >= touchQuietUntil else { return }
         switch mode {
@@ -313,6 +353,8 @@ final class SqueezeDirector: ObservableObject {
     /// Continuous base input, like a spirit level: the pillow sinks as far as the phone is tipped,
     /// and in free mode every bit of rocking adds energy, with no threshold to reach first.
     private func baseLive(flow: Double, depth: Double) {
+        if guiding { feedProbe(tilt: depth, earned: flow / 8); return }
+        let depth = abs(depth)
         let now = CACurrentMediaTime()
         let free = touchStart == nil && holdStart == nil && now >= touchQuietUntil
         if mode != .breath, free {
@@ -621,7 +663,7 @@ final class SqueezeDirector: ObservableObject {
     // MARK: - Guide lines
 
     private func text(_ key: String) -> String {
-        let thing = language == .zh ? "底座或屏幕" : "the base or the screen"
+        let thing = language == .zh ? "感官袋或屏幕" : "the bag or the screen"
         switch key {
         case "ready": return language == .zh ? "准备好了，就按住\(thing)" : "Press and hold \(thing) when you're ready"
         case "hold": return language == .zh ? "按住\(thing)，慢慢吸气" : "Hold \(thing), breathe in slowly"

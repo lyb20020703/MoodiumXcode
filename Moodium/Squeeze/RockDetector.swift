@@ -79,7 +79,7 @@ struct RockDetector {
     /// One sample. `tilt` in degrees (+ = right edge lower), `rate` its speed in °/s,
     /// `muted` while our own haptics shake the phone or squeezes are off.
     /// Returns a squeeze and/or a hold change (`hold` only fires in hold mode), `flow`: energy units
-    /// earned by this sample's motion, and `depth`: 0…1 how far the phone is tipped from rest.
+    /// earned by this sample's motion, and `depth`: -1…1 how far the phone is tipped from rest (signed like `tilt`).
     mutating func feed(tilt: Double, rate: Double, now: Double, muted: Bool = false)
         -> (pulse: Pulse?, hold: Hold?, flow: Double, depth: Double) {
         let dt = min(0.05, max(0, now - (lastTime ?? now)))
@@ -137,7 +137,7 @@ struct RockDetector {
         let floor = min(Self.flowFloor.upperBound, max(Self.flowFloor.lowerBound, noise * 3.5)) * scale
         let moving = max(0, wobble - floor)
         let flow = muted ? 0 : Self.flowMax * (1 - exp(-moving / (Self.flowSoft * scale))) * dt
-        let depth = min(1, abs(off) / (Self.fullDepth * scale))
+        let depth = max(-1, min(1, off / (Self.fullDepth * scale)))
 
         let hold = holdMode ? trackHold(off, tilt: tilt, now: now, muted: muted) : nil
         if !holdMode, isHeld { isHeld = false; tipSince = nil }
