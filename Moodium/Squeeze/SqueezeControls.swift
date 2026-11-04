@@ -20,6 +20,8 @@ struct ModeBar: View {
                 withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) { showHelp = true }
             }
         }
+        .padding(.vertical, 6)
+        .glass(RoundedRectangle(cornerRadius: 28, style: .continuous), tint: Palette.ink, amount: 0.32, shadow: false)
     }
 
     private func puck(icon: String, label: String, selected: Bool, recommended: Bool, action: @escaping () -> Void) -> some View {
@@ -45,7 +47,8 @@ struct ModeBar: View {
                 .frame(width: 42, height: 42)
                 Text(label)
                     .font(.moodium(10, selected ? .bold : .medium))
-                    .foregroundStyle(selected ? .white : Palette.textMuted)
+                    .foregroundStyle(.white.opacity(selected ? 1 : 0.82))
+                    .shadow(color: .black.opacity(0.35), radius: 2, y: 1)
                     .lineLimit(1).minimumScaleFactor(0.7)
                     .frame(width: 52)
             }
@@ -53,6 +56,9 @@ struct ModeBar: View {
         }
         .buttonStyle(PressScaleStyle())
         .animation(.easeOut(duration: 0.2), value: selected)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(label)
+        .accessibilityAddTraits(selected ? [.isButton, .isSelected] : .isButton)
     }
 }
 

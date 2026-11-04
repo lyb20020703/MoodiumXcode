@@ -75,6 +75,11 @@ struct GlassButtonStyle: ButtonStyle {
     }
 }
 
+/// Chinese or English copy for views that don't hold the AppModel (reads the saved language).
+func localized(_ zh: String, _ en: String) -> String {
+    (UserDefaults.standard.string(forKey: "Moodium.Language") ?? "zh") == "en" ? en : zh
+}
+
 /// Round glass icon button (back, settings, sound).
 struct GlassIconButton: View {
     let symbol: String
@@ -90,6 +95,20 @@ struct GlassIconButton: View {
         }
         .buttonStyle(IconPressStyle())
         .glass(Circle())
+        .accessibilityLabel(Self.spokenName(symbol))
+    }
+
+    /// What VoiceOver says for the icon.
+    static func spokenName(_ symbol: String) -> String {
+        switch symbol {
+        case "chevron.left": return localized("返回", "Back")
+        case "gearshape.fill": return localized("设置", "Settings")
+        case "house.fill": return localized("首页", "Home")
+        case "xmark": return localized("关闭", "Close")
+        case "speaker.wave.2.fill": return localized("声音：开", "Sound on")
+        case "speaker.slash.fill": return localized("声音：关", "Sound off")
+        default: return symbol
+        }
     }
 }
 

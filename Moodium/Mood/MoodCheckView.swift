@@ -148,8 +148,8 @@ struct MoodCheckView: View {
 
             axisLabel("axis.up").offset(y: -r - 16)
             axisLabel("axis.down").offset(y: r + 16)
-            axisLabel("axis.left").rotationEffect(.degrees(-90)).offset(x: -r - 18)
-            axisLabel("axis.right").rotationEffect(.degrees(90)).offset(x: r + 18)
+            axisLabel("axis.left").frame(width: 60, alignment: .trailing).offset(x: -r - 38)
+            axisLabel("axis.right").frame(width: 60, alignment: .leading).offset(x: r + 38)
         }
         .frame(width: size, height: size)
         .contentShape(Circle().inset(by: -20))
@@ -201,9 +201,12 @@ struct MoodCheckView: View {
                 Text(touched ? mood.label(app.language) : MoodCopy.text("plate.hint", app.language))
                     .font(.moodium(15, .medium))
             }
-            .padding(.horizontal, 14).padding(.vertical, 9)
-            .glass(tint: touched ? mood.tint : nil, amount: 0.3, shadow: false)
+            // a plain hint until a mood is chosen (so it doesn't look like a button), then a tinted readout
+            .foregroundStyle(touched ? .white : Palette.textMuted)
+            .padding(.horizontal, touched ? 14 : 0).padding(.vertical, 9)
+            .background { if touched { Capsule().fill(.clear).glass(tint: mood.tint, amount: 0.3, shadow: false) } }
             .animation(.easeOut(duration: 0.2), value: mood)
+            .animation(.easeOut(duration: 0.2), value: touched)
 
             // quick picks
             HStack(spacing: 6) {

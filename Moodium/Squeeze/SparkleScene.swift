@@ -110,7 +110,7 @@ final class SparkleScene: SKScene, SKPhysicsContactDelegate {
 
         // Ring shock + glow flash
         flash(at: origin, texture: "fx_ring", from: 0.15, to: 0.8 + 0.6 * i, duration: 0.45, alpha: 0.85, color: accent)
-        flash(at: origin, texture: "fx_glow", from: 0.4, to: 1.2 + 0.6 * i, duration: 0.35, alpha: 0.7, color: .white)
+        flash(at: origin, texture: "fx_glow", from: 0.4, to: 1.0 + 0.5 * i, duration: 0.3, alpha: 0.38, color: accent)
 
         // Sparkles, biased up and away from the pressed side
         let sparkle = emitter("fx_sparkle", count: 14 + Int(22 * i))
@@ -594,8 +594,10 @@ final class SparkleScene: SKScene, SKPhysicsContactDelegate {
     private func emitter(_ texture: String, count: Int) -> SKEmitterNode {
         let e = SKEmitterNode()
         e.particleTexture = Self.tex(texture)
-        e.numParticlesToEmit = count
-        e.particleBirthRate = count > 0 ? 800 : 0
+        // a little lighter than the visionOS counts (the phone screen is small), much lighter with Reduce Motion
+        let n = count > 0 ? max(1, Int((Double(count) * (UIAccessibility.isReduceMotionEnabled ? 0.35 : 0.75)).rounded())) : 0
+        e.numParticlesToEmit = n
+        e.particleBirthRate = n > 0 ? 800 : 0
         e.particleColorBlendFactor = 1
         e.particleColor = .white
         e.particleBlendMode = .add

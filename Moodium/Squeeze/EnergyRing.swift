@@ -33,6 +33,9 @@ struct EnergyRing: View {
             if new == 0 { gemReached = [:]; fullAt = nil; popDot = (-1, 0) }
         }
         .allowsHitTesting(false)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(localized("能量", "Energy"))
+        .accessibilityValue("\(Int((energy * 100).rounded()))%")
     }
 
     private func ring(at t: TimeInterval) -> some View {
@@ -40,6 +43,10 @@ struct EnergyRing: View {
         let head = energy > 0 && energy < 1 ? lit - 1 : -1
         return ZStack {
             Image(asset: "energy_halo").resizable().frame(width: 200, height: 200)
+            // contrast well: the candy sky is nearly white, the dots and number need something to sit on
+            Circle().fill(RadialGradient(colors: [Palette.ink.opacity(0.42), Palette.ink.opacity(0.26), .clear],
+                                         center: .center, startRadius: 20, endRadius: 82))
+                .frame(width: 164, height: 164)
             ForEach(0..<count, id: \.self) { i in
                 dot(i, lit: lit, head: head, t: t)
             }

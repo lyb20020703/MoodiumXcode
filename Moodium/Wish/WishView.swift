@@ -51,7 +51,7 @@ struct WishView: View {
             ZStack {
                 Palette.ink
                 if let image = Res.image(world.backdrop) {
-                    Image(uiImage: image).resizable().scaledToFill().blur(radius: 5).scaleEffect(1.08)
+                    Image(uiImage: image).resizable().scaledToFill().blur(radius: 2).scaleEffect(1.04)
                 }
                 LinearGradient(colors: [Palette.ink.opacity(0.35), Palette.ink.opacity(0.2), Palette.ink.opacity(0.75)],
                                startPoint: .top, endPoint: .bottom)
