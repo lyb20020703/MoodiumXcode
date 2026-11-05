@@ -71,6 +71,45 @@ struct Crease: Equatable {
     }
 }
 
+extension Crease {
+    /// The same fold seen in a view turned upside down (see `BaseFlip`).
+    func mirrored(height h: CGFloat) -> Crease {
+        func flip(_ r: CGRect) -> CGRect { CGRect(x: r.minX, y: h - r.maxY, width: r.width, height: r.height) }
+        return Crease(band: flip(band), top: flip(bottom), bottom: flip(top))
+    }
+}
+
+/// The iPhone Duo's MagSafe is in the half that is on top when the inner display is held
+/// upright the system's way. On our magnetic base that half lies flat underneath, so the
+/// phone is upside down for the system. While the phone is half folded (or the hinge can't be
+/// read) and the fold crosses the screen, the app turns its whole interface over itself: "down" is always the MagSafe half on the base, the upright
+/// half shows the sky and the energy ring. (The system's own upside-down rotation stays off,
+/// see `OrientationPolicy`, so the two never add up.)
+enum BaseFlip {
+    /// The interface is turned over right now (set and read on the main thread; the motion
+    /// code reads it to flip its axes).
+    nonisolated(unsafe) static var active = false
+
+    /// The orientation the user sees: the system's one, turned over while flipped.
+    static func visible(_ o: UIInterfaceOrientation) -> UIInterfaceOrientation {
+        guard active else { return o }
+        switch o {
+        case .portrait: return .portraitUpsideDown
+        case .portraitUpsideDown: return .portrait
+        default: return o
+        }
+    }
+
+    static var enabled: Bool {
+        #if MOODIUM_AUTOPILOT
+        // the Mac test build shows the layout the right way up unless MAGSAFE_FLIP is set
+        return ProcessInfo.processInfo.environment["MAGSAFE_FLIP"] != nil
+        #else
+        return true
+        #endif
+    }
+}
+
 private struct CreaseKey: EnvironmentKey { static let defaultValue: Crease? = nil }
 
 extension EnvironmentValues {

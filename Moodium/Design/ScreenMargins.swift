@@ -15,6 +15,9 @@ struct ScreenMargins: Equatable {
 
     var insets: EdgeInsets { EdgeInsets(top: top, leading: leading, bottom: bottom, trailing: trailing) }
 
+    /// The same margins for an interface turned upside down.
+    var turnedOver: ScreenMargins { ScreenMargins(top: bottom, leading: trailing, bottom: top, trailing: leading) }
+
     static func fit(_ safe: EdgeInsets) -> ScreenMargins {
         let side = max(safe.leading, safe.trailing)
         // Home-button phones (iPhone SE): square corners, nothing to dodge.

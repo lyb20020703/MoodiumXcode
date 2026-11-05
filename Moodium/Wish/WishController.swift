@@ -349,7 +349,7 @@ final class WishController: ObservableObject {
 
     private func startMotion() {
         guard motion.isDeviceMotionAvailable else { return }
-        if let o = UIApplication.shared.connectedScenes.compactMap({ $0 as? UIWindowScene }).first?.effectiveGeometry.interfaceOrientation { orientation = o }
+        if let o = UIApplication.shared.connectedScenes.compactMap({ $0 as? UIWindowScene }).first?.effectiveGeometry.interfaceOrientation { orientation = BaseFlip.visible(o) }
         motion.deviceMotionUpdateInterval = 1.0 / 60
         motion.startDeviceMotionUpdates(to: .main) { [weak self] m, _ in
             guard let self, let m else { return }
@@ -358,7 +358,8 @@ final class WishController: ObservableObject {
     }
 
     private func process(_ m: CMDeviceMotion) {
-        let right: SIMD3<Double> = orientation == .landscapeLeft ? [0, 1, 0] : orientation == .landscapeRight ? [0, -1, 0] : [1, 0, 0]
+        let right: SIMD3<Double> = orientation == .landscapeLeft ? [0, 1, 0] : orientation == .landscapeRight ? [0, -1, 0]
+            : orientation == .portraitUpsideDown ? [-1, 0, 0] : [1, 0, 0]
         let g = SIMD3(m.gravity.x, m.gravity.y, m.gravity.z)
         let a = SIMD3(m.userAcceleration.x, m.userAcceleration.y, m.userAcceleration.z)
         tilt += (simd_dot(g, right) - tilt) * 0.2

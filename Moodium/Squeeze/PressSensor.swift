@@ -107,7 +107,7 @@ final class PressSensor {
 
     private func refreshOrientation() {
         let scene = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.first
-        if let o = scene?.effectiveGeometry.interfaceOrientation, o != .unknown { orientation = o }
+        if let o = scene?.effectiveGeometry.interfaceOrientation, o != .unknown { orientation = BaseFlip.visible(o) }
     }
 
     /// Screen-right and screen-up expressed in device axes for the current interface orientation.

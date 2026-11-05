@@ -13,13 +13,23 @@ struct RootView: View {
             .overlay {
                 // the whole screen: where the Duo's fold crosses it, if it does
                 GeometryReader { geo in
-                    let crease = Crease.detect(geo)
-                    screens.environment(\.crease, crease)
+                    let found = Crease.detect(geo)
+                    // half folded on the magnetic base the MagSafe half (the system's top) lies flat:
+                    // turn over (also when the hinge can't be read, the app's usual setup)
+                    let folded = hinge.partiallyOpen || hinge.angle == nil
+                    let flip = found != nil && folded && BaseFlip.enabled
+                    let crease = flip ? found?.mirrored(height: geo.size.height) : found
+                    screens
+                        .environment(\.crease, crease)
+                        .environment(\.screenMargins, flip ? margins.turnedOver : margins)
+                        .rotationEffect(.degrees(flip ? 180 : 0))
+                        .onAppear { BaseFlip.active = flip }
+                        .onChange(of: flip) { _, f in BaseFlip.active = f }
                     #if MOODIUM_AUTOPILOT
                     // CREASE_LINE=1 marks the fold in test screenshots
-                    if let crease, ProcessInfo.processInfo.environment["CREASE_LINE"] != nil {
-                        Rectangle().fill(.red.opacity(0.35)).frame(height: crease.band.height)
-                            .position(x: crease.band.midX, y: crease.band.midY).allowsHitTesting(false)
+                    if let found, ProcessInfo.processInfo.environment["CREASE_LINE"] != nil {
+                        Rectangle().fill(.red.opacity(0.35)).frame(height: found.band.height)
+                            .position(x: found.band.midX, y: found.band.midY).allowsHitTesting(false)
                     }
                     #endif
                 }
