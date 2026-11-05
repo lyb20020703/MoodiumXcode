@@ -46,7 +46,9 @@ final class FireworksShow: ObservableObject {
     }
 
     /// One rocket from `start` into `sky`. `power` 0…1.3 sets the burst size, `reach` 0…1 how high it climbs.
-    func launch(from start: CGPoint, sky: CGRect, reach: Double, power: Double, shape: Shape = .sphere, delay: Double = 0) {
+    /// `avoid`: an area the bursts stay clear of (the energy ring above the fold).
+    func launch(from start: CGPoint, sky: CGRect, reach: Double, power: Double, shape: Shape = .sphere, delay: Double = 0,
+                avoid: CGRect? = nil) {
         let now = Date().timeIntervalSinceReferenceDate + delay
         rockets.removeAll { $0.end < now - delay }
         // keep the sky readable: squeezes add at most a handful of rockets at once (scripted bursts always fly)
@@ -54,11 +56,20 @@ final class FireworksShow: ObservableObject {
 
         let highest = sky.minY + sky.height * (0.16 + 0.34 * (1 - reach))
         let lowest = sky.maxY - sky.height * 0.32
-        let apexY = CGFloat.random(in: min(highest, lowest)...max(highest, lowest))
+        var apexY = CGFloat.random(in: min(highest, lowest)...max(highest, lowest))
         let drift = CGFloat.random(in: -0.28...0.28) * sky.width
-        let apexX = min(max(start.x + drift, sky.minX + sky.width * 0.14), sky.maxX - sky.width * 0.14)
+        var apexX = min(max(start.x + drift, sky.minX + sky.width * 0.14), sky.maxX - sky.width * 0.14)
 
         let radius = sky.height * CGFloat(0.13 + 0.12 * power)    // how far the sparks spread
+        // burst beside the ring, or above it when there is no room at the side
+        if let avoid, avoid.insetBy(dx: -radius * 0.6, dy: -radius * 0.6).contains(CGPoint(x: apexX, y: apexY)) {
+            let left = avoid.minX - radius * 0.75, right = avoid.maxX + radius * 0.75
+            let lo = sky.minX + radius * 0.5, hi = sky.maxX - radius * 0.5
+            if apexX < avoid.midX, left >= lo { apexX = left }
+            else if right <= hi { apexX = right }
+            else if left >= lo { apexX = left }
+            else { apexY = max(sky.minY + radius * 0.5, avoid.minY - radius * 0.8) }
+        }
         let speed = radius * CGFloat(Self.drag)
         let color = palette.randomElement() ?? .white
         let accent = palette.randomElement() ?? .white

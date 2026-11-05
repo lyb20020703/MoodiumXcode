@@ -34,9 +34,11 @@ struct SqueezeView: View {
             let stageRect = fold?.bottom ?? full
             let canvasRect = fold?.stage ?? full
             let skyRect = fold?.top ?? full
-            // the energy ring floats above the pillow (on the bottom half when folded, so the sky stays clear)
-            let ringCenter = CGPoint(x: stageRect.midX, y: stageRect.minY + stageRect.height * (fold == nil ? 0.19 : 0.17))
-            let ringSize = fold == nil ? full.size : CGSize(width: stageRect.width, height: stageRect.height * 0.8)
+            // the energy ring floats above the pillow; when folded it sits in the half above the fold,
+            // where it is easy to watch, with Moodi's lines under it
+            let ring = Self.ringPlacement(fold: fold, stage: stageRect, full: full)
+            let ringCenter = ring.center
+            let ringSize = ring.size
             ZStack {
                 // above the fold: the same panorama, continuing up from the stage's sky
                 if let fold {
@@ -177,8 +179,26 @@ struct SqueezeView: View {
         .allowsHitTesting(false)
     }
 
-    private func ringScale(_ size: CGSize) -> CGFloat {
+    private static func ringScale(_ size: CGSize) -> CGFloat {
         min(1.1, max(0.62, size.height / 520))
+    }
+
+    private func ringScale(_ size: CGSize) -> CGFloat { Self.ringScale(size) }
+
+    /// Where the energy ring goes, and the area it sizes itself by.
+    private static func ringPlacement(fold: TabletopFold?, stage: CGRect, full: CGRect) -> (center: CGPoint, size: CGSize) {
+        guard let fold else {
+            return (CGPoint(x: stage.midX, y: stage.minY + stage.height * 0.19), full.size)
+        }
+        let top = fold.top
+        return (CGPoint(x: top.midX, y: top.maxY - top.height * 0.44), CGSize(width: top.width, height: top.height * 0.98))
+    }
+
+    /// The ring's footprint above the fold, which the fireworks keep clear of.
+    private static func ringZone(_ fold: TabletopFold) -> CGRect {
+        let ring = ringPlacement(fold: fold, stage: fold.bottom, full: .zero)
+        let r = 100 * ringScale(ring.size)
+        return CGRect(x: ring.center.x - r, y: ring.center.y - r, width: 2 * r, height: 2 * r + 40)
     }
 
     // MARK: HUD
@@ -211,11 +231,11 @@ struct SqueezeView: View {
         switch cue {
         case .squeeze(let intensity, let from):
             fireworks.launch(from: origin(from), sky: fold.top, reach: fold.reach, power: 0.45 + 0.55 * intensity,
-                             shape: intensity > 0.75 ? .ring : .sphere)
+                             shape: intensity > 0.75 ? .ring : .sphere, avoid: Self.ringZone(fold))
         case .gift(let from):
             for k in 0..<3 {
                 fireworks.launch(from: origin(from), sky: fold.top, reach: fold.reach, power: 1,
-                                 shape: k == 1 ? .double : .sphere, delay: Double(k) * 0.18)
+                                 shape: k == 1 ? .double : .sphere, delay: Double(k) * 0.18, avoid: Self.ringZone(fold))
             }
             AudioDirector.shared.sfx("sfx_chime", volume: 0.3)
         case .finale(let from):
@@ -224,7 +244,7 @@ struct SqueezeView: View {
                 : [.double, .sphere, .ring, .double, .sphere, .ring, .double, .sphere, .sphere]
             for (k, shape) in shapes.enumerated() {
                 fireworks.launch(from: origin(from), sky: fold.top, reach: fold.reach, power: 1.15,
-                                 shape: shape, delay: Double(k) * 0.28)
+                                 shape: shape, delay: Double(k) * 0.28, avoid: Self.ringZone(fold))
             }
         }
     }
