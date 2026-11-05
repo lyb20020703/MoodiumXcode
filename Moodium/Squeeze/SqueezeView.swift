@@ -253,16 +253,16 @@ struct SqueezeView: View {
     }
 
     private var hintText: String {
-        app.t("轻压感官袋，或按住屏幕再松开，把 Moodi 挤出来", "Press the bag, or press and release the screen, to squeeze Moodi out")
+        app.t("按压感官袋或屏幕，把 Moodi 挤出来", "Press the bag or the screen to squeeze Moodi out")
     }
 
     /// After Moodi is out: a small card in the middle of the screen with two choices.
     private var completionCard: some View {
-        VStack(spacing: 10) {
+        VStack(spacing: 12) {
             VStack(spacing: 3) {
-                Text(app.t("Moodi 得救啦！", "Moodi is free!")).font(.moodium(19, .bold))
+                Text(app.t("Moodi 出来了", "Moodi is free")).font(.moodium(19, .bold))
                 Text(director.giftsGrown == 4
-                     ? app.t("4 件礼物都收齐啦 · 谢谢你温柔的按压", "All 4 gifts collected · thanks for every gentle squeeze")
+                     ? app.t("4 件礼物全部收齐", "All 4 gifts collected")
                      : app.t("谢谢你温柔的按压", "Thanks for every gentle squeeze"))
                     .font(.moodium(13)).foregroundStyle(Palette.textMuted)
             }
@@ -287,8 +287,8 @@ struct SqueezeView: View {
             }
             .buttonStyle(.plain)
         }
-        .padding(.horizontal, 22).padding(.vertical, 12)
-        .glass(RoundedRectangle(cornerRadius: 24, style: .continuous), tint: Palette.smoke, amount: 0.55)
+        .padding(.horizontal, Panel.padding).padding(.top, Panel.padding).padding(.bottom, Panel.padding - 6)
+        .glass(Panel.shape, tint: Palette.smoke, amount: 0.55)
         // in the middle of the screen
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
     }

@@ -144,17 +144,19 @@ struct WorldSelectView: View {
                         Text(MoodCopy.text("tag.pick", app.language)).font(.moodium(12, .bold))
                     }
                     .foregroundStyle(.white)
-                    .padding(.horizontal, 9).padding(.vertical, 4)
+                    .padding(.horizontal, 10)
+                    .frame(height: 26)      // the strip's inner height: 5 pt inset all round
                     .background(Capsule().fill(world.accent.opacity(0.85)))
                     .transition(.scale(scale: 0.8).combined(with: .opacity))
                 }
                 Image(asset: world.icon).resizable().scaledToFit().frame(width: 26, height: 26)
                 Text(world.name(app.language)).font(.moodium(20, .bold))
-                Text("·").foregroundStyle(Palette.textMuted)
                 Text(world.tagline(app.language)).font(.moodium(15)).foregroundStyle(Palette.textMuted)
+                    .padding(.leading, 4)
             }
-            // a soft glass strip so the name stays readable over the island's base
-            .padding(.horizontal, 14).padding(.vertical, 5)
+            // a soft glass strip so the name stays readable over the island's base; with the
+            // "pick" tag in front, the same inset on all sides keeps the two capsules concentric
+            .padding(.leading, app.recommendedWorld == world ? 5 : 12).padding(.trailing, 16).padding(.vertical, 5)
             .glass(tint: Palette.smoke, amount: 0.45, shadow: false)
             .id(world)
             .transition(.opacity)
@@ -188,12 +190,9 @@ struct WorldSelectView: View {
         HStack(spacing: 6) {
             if let sample = app.preSample {
                 Image(asset: sample.mood.moodiFace).resizable().scaledToFit().frame(width: 18)
-                Text(MoodCopy.text("rec.today", app.language, ["mood": sample.mood.name(app.language)]))
-                    .foregroundStyle(.white.opacity(0.9))
-                Text("·")
                 Text(MoodCopy.text("rec.short.\(sample.mood.rawValue)", app.language))
             } else {
-                Text(app.t("左右滑动，挑一个想去的小世界", "Swipe to pick a little world"))
+                Text(app.t("左右滑动选择世界", "Swipe to choose a world"))
             }
         }
         .font(.moodium(14))

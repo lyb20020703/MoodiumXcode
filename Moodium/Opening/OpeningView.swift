@@ -80,8 +80,6 @@ struct OpeningView: View {
         VStack(spacing: 10) {
             switch step {
             case .language:
-                Text("选择语言 · Choose language")
-                    .font(.moodium(17, .medium)).foregroundStyle(Palette.textMuted)
                 HStack(spacing: 6) {
                     OpeningPill(title: "中文", highlighted: app.language == .zh) { choose(.zh) }
                     OpeningPill(title: "English", highlighted: app.language == .en) { choose(.en) }

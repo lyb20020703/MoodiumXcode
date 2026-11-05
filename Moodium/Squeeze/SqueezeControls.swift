@@ -79,30 +79,30 @@ struct ModeHelpCard: View {
                 HStack {
                     Text(app.t("怎么玩", "How to play")).font(.moodium(22, .bold))
                     Spacer()
-                    GlassIconButton(symbol: "xmark", size: 34) { close() }
+                    GlassIconButton(symbol: "xmark", size: Panel.control) { close() }
                 }
                 row("mode_icon_free", app.t("自由", "Free"),
-                    app.t("想怎么按就怎么按，每一下都在把 Moodi 往外挤。", "Squeeze any way you like — every press pushes Moodi out."))
+                    app.t("随意按压\(thing)，每一下都会把 Moodi 往外推。", "Press \(thing) any way you like. Every press moves Moodi out."))
                 row("mode_icon_rhythm", app.t("节奏", "Rhythm"),
-                    app.t("光圈缩到能量环上时按一下\(thing)，连着按准，能量越攒越快。",
-                          "Press \(thing) when the light ring meets the energy ring. Keep the streak for more energy."))
+                    app.t("光圈与能量环重合时按压。连续按准，能量增长更快。",
+                          "Press when the light ring meets the energy ring. A streak fills energy faster."))
                 row("mode_icon_breath", app.t("呼吸", "Breath"),
-                    app.t("按住\(thing)慢慢吸气 3–5 秒，松开慢慢呼气。呼吸得越舒服，能量越多。",
-                          "Hold \(thing) and breathe in for 3–5 s, then let go and breathe out. Calm breaths earn the most."))
+                    app.t("按住吸气 3–5 秒，松开后慢慢呼气。越平稳，能量越多。",
+                          "Hold and breathe in for 3–5 s, then let go and breathe out slowly. Steady breaths earn more."))
                 if let onBagGuide {
                     Button {
                         isPresented = false
                         onBagGuide()
                     } label: {
-                        Label(app.t("感官袋怎么放？再看一遍", "How to use the sensory bag"), systemImage: "hand.point.down.fill")
+                        Label(app.t("感官袋用法", "Using the sensory bag"), systemImage: "hand.point.down.fill")
                     }
                     .buttonStyle(GlassButtonStyle(compact: true))
                 }
             }
             .foregroundStyle(.white)
-            .padding(22)
-            .frame(width: 440)
-            .glass(RoundedRectangle(cornerRadius: 28, style: .continuous), tint: Palette.smoke, amount: 0.6)
+            .padding(Panel.padding)
+            .frame(width: 470)
+            .glass(Panel.shape, tint: Palette.smoke, amount: 0.6)
             .offCrease()
         }
     }
@@ -113,6 +113,8 @@ struct ModeHelpCard: View {
                 Image(asset: "mode_btn_base").resizable().frame(width: 38, height: 38)
                 Image(asset: icon).resizable().frame(width: 19, height: 19)
             }
+            // the icon's centre lines up with the title line, not with the top of the text
+            .alignmentGuide(.top) { d in d[VerticalAlignment.center] - 10 }
             VStack(alignment: .leading, spacing: 3) {
                 Text(title).font(.moodium(16, .bold))
                 Text(body).font(.moodium(13)).foregroundStyle(Palette.textMuted)
@@ -184,7 +186,7 @@ struct RhythmGuide: View {
             ForEach(0..<8, id: \.self) { i in
                 Circle()
                     .fill(i < filled ? AnyShapeStyle(accent) : AnyShapeStyle(.white.opacity(0.28)))
-                    .overlay(Circle().stroke(.white.opacity(i < filled ? 0.9 : 0.35), lineWidth: 1))
+                    .overlay(Circle().strokeBorder(.white.opacity(i < filled ? 0.9 : 0.4), lineWidth: Panel.hairline))
                     .frame(width: 10, height: 10)
                     .shadow(color: i < filled ? accent : .clear, radius: 3)
             }
@@ -284,7 +286,7 @@ struct BreathGuide: View {
             case .inhale:
                 if held < 3 { return (app.t("吸气 \(Int(held) + 1)", "Breathe in \(Int(held) + 1)"), .white) }
                 if held <= 5.5 { return (app.t("松开，呼气", "Let go, breathe out"), green) }
-                return (app.t("可以松开啦", "Let go now"), Color(hex: 0xFFE3A3))
+                return (app.t("可以松开了", "Let go now"), Color(hex: 0xFFE3A3))
             case .exhale:
                 // a long, slow breath out calms the body most: count it down
                 let left = Int(ceil(director.exhaleSeconds - since))
@@ -305,7 +307,7 @@ struct BreathGuide: View {
                 HStack(spacing: 4) {
                     ForEach(0..<min(6, max(3, director.breaths)), id: \.self) { i in
                         Circle().fill(i < director.breaths ? AnyShapeStyle(accent) : AnyShapeStyle(.white.opacity(0.28)))
-                            .overlay(Circle().stroke(.white.opacity(0.7), lineWidth: 0.8))
+                            .overlay(Circle().strokeBorder(.white.opacity(0.7), lineWidth: Panel.hairline))
                             .frame(width: 8, height: 8)
                     }
                 }
@@ -313,7 +315,7 @@ struct BreathGuide: View {
         }
         .padding(.horizontal, 14).padding(.vertical, 6)
         .background(Capsule().fill(Palette.ink.opacity(0.48)))
-        .overlay(Capsule().stroke((inWindow ? green : .white).opacity(inWindow ? 0.8 : 0.18), lineWidth: 1))
+        .overlay(Capsule().strokeBorder((inWindow ? green : .white).opacity(inWindow ? 0.8 : 0.24), lineWidth: Panel.hairline))
         .animation(.easeOut(duration: 0.25), value: word)
     }
 

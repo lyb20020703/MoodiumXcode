@@ -35,8 +35,8 @@ struct BagGuide: View {
                     steps.frame(maxWidth: 330, alignment: .leading)
                 }
             }
-            .padding(22)
-            .glass(RoundedRectangle(cornerRadius: 30, style: .continuous), tint: Palette.smoke, amount: 0.6)
+            .padding(Panel.padding)
+            .glass(Panel.shape, tint: Palette.smoke, amount: 0.6)
             .padding(16)
             .offCrease()
         }
@@ -47,18 +47,18 @@ struct BagGuide: View {
 
     private var steps: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text(app.t("先认识一下感官袋", "Meet the sensory bag")).font(.moodium(21, .bold))
-            step(1, app.t("把感官袋平放在桌上，手机屏幕朝上，放在袋子正中间",
-                          "Lay the bag flat on a table and put the phone in the middle, screen up"))
-            step(2, app.t("轻轻按袋子的左边或右边，手机会跟着微微晃",
-                          "Gently press the left or right side of the bag — the phone rocks a little"))
+            Text(app.t("感官袋用法", "Using the sensory bag")).font(.moodium(21, .bold))
+            step(1, app.t("把感官袋平放在桌上，手机屏幕朝上放在正中间",
+                          "Lay the bag flat on a table, phone in the middle, screen up"))
+            step(2, app.t("轻按袋子左侧或右侧，手机会随之轻微摆动",
+                          "Gently press the left or right side; the phone rocks slightly"))
             meter
             HStack(spacing: 12) {
                 Button(app.t("开始", "Start")) { onDone() }
                     .buttonStyle(GlassButtonStyle(tint: world.accent, prominent: true, compact: true))
                     .scaleEffect(done ? 1.06 : 1)
                     .animation(.spring(response: 0.3, dampingFraction: 0.6), value: done)
-                Text(app.t("没有感官袋？按住屏幕再松开，也一样能捏", "No bag? Press and release the screen instead"))
+                Text(app.t("没有感官袋时，也可以按压屏幕", "No bag? Press the screen instead"))
                     .font(.moodium(12))
                     .foregroundStyle(Palette.textMuted)
                     .fixedSize(horizontal: false, vertical: true)
@@ -84,8 +84,8 @@ struct BagGuide: View {
         let green = Color(hex: 0x9BE8B4)
         return VStack(alignment: .leading, spacing: 7) {
             HStack(spacing: 6) {
-                Text(done ? app.t("感觉到了，就是这样！", "Got it — that's the way!")
-                          : app.t("试一试：按几下，把这条按满", "Try it: a few presses fill this bar"))
+                Text(done ? app.t("就是这样", "That's it")
+                          : app.t("按几下，填满进度条", "Press a few times to fill the bar"))
                     .font(.moodium(14, .semibold))
                     .foregroundStyle(done ? green : .white)
                 if done { Image(systemName: "checkmark.circle.fill").foregroundStyle(green) }
@@ -148,7 +148,7 @@ struct BagGuide: View {
             // the phone on top, rocking about the middle of the bag
             RoundedRectangle(cornerRadius: 5, style: .continuous)
                 .fill(Color(hex: 0x2A2533))
-                .overlay(RoundedRectangle(cornerRadius: 5, style: .continuous).stroke(.white.opacity(0.7), lineWidth: 1.2))
+                .overlay(RoundedRectangle(cornerRadius: 5, style: .continuous).strokeBorder(.white.opacity(0.85), lineWidth: Panel.hairline))
                 .overlay(alignment: .top) { Capsule().fill(world.accent).frame(width: 96, height: 2).offset(y: 1.5) }
                 .frame(width: 128, height: 11)
                 .offset(y: -36)
@@ -163,8 +163,8 @@ struct BagGuide: View {
                     .foregroundStyle(.white.opacity(0.3 + 0.7 * press))
                     .offset(x: side * 80, y: -32 + 16 * press)
             }
-            Text(live ? app.t("跟着你的手机在晃", "Moving with your phone")
-                      : app.t("左按一下，右按一下", "Press left, then right"))
+            Text(live ? app.t("正在跟随你的手机", "Following your phone")
+                      : app.t("左右各按一下", "Press left, then right"))
                 .font(.moodium(12, .semibold))
                 .foregroundStyle(live ? world.accent : Palette.textMuted)
                 .offset(y: bagY + 50)

@@ -205,8 +205,6 @@ struct MoodCheckView: View {
 
     private var question: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Text(MoodCopy.text("plate.kicker", app.language))
-                .font(.moodium(14, .semibold)).foregroundStyle(Palette.lavender)
             Text(MoodCopy.text(isPost ? "plate.title.post" : "plate.title.pre", app.language))
                 .font(.moodium(26, .bold))
                 .fixedSize(horizontal: false, vertical: true)
@@ -214,8 +212,12 @@ struct MoodCheckView: View {
             // current mood
             HStack(spacing: 8) {
                 Image(asset: mood.icon).resizable().frame(width: 20, height: 20)
-                Text(touched ? mood.label(app.language) : MoodCopy.text("plate.hint", app.language))
-                    .font(.moodium(15, .medium))
+                if touched {
+                    Text(mood.name(app.language)).font(.moodium(15, .semibold))
+                    Text(mood.detail(app.language)).font(.moodium(15)).foregroundStyle(.white.opacity(0.78))
+                } else {
+                    Text(MoodCopy.text("plate.hint", app.language)).font(.moodium(15, .medium))
+                }
             }
             // a plain hint until a mood is chosen (so it doesn't look like a button), then a tinted readout
             .foregroundStyle(touched ? .white : Palette.textMuted)
@@ -305,7 +307,7 @@ struct MoodCheckView: View {
                 .buttonStyle(GlassButtonStyle())
             }
             Button { finish(other) } label: {
-                Text(MoodCopy.text("rec.other", app.language)).underline()
+                Text(MoodCopy.text("rec.other", app.language, ["world": other.name(app.language)])).underline()
             }
             .buttonStyle(.plain)
             .font(.moodium(13)).foregroundStyle(Palette.textMuted)
@@ -343,7 +345,10 @@ struct MoodCheckView: View {
         VStack(spacing: 4) {
             Image(asset: m.moodiFace).resizable().scaledToFit().frame(width: 48)
                 .background(Circle().fill(m.tint.opacity(0.3)).frame(width: 58, height: 58))
-            Text("\(caption) · \(m.name(app.language))").font(.moodium(12, .semibold)).foregroundStyle(Palette.textMuted)
+            VStack(spacing: 1) {
+                Text(caption).font(.moodium(11)).foregroundStyle(Palette.textMuted)
+                Text(m.name(app.language)).font(.moodium(13, .semibold))
+            }
         }
     }
 

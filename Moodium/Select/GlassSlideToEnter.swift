@@ -35,7 +35,7 @@ struct GlassSlideToEnter: View {
             // Glow rim
             Capsule().stroke(world.glow, lineWidth: 3).blur(radius: 6).opacity(0.15 + 0.6 * Double(p))
             Capsule().strokeBorder(LinearGradient(colors: [.white.opacity(0.9), .white.opacity(0.2), .white.opacity(0.6)],
-                                                  startPoint: .topLeading, endPoint: .bottomTrailing), lineWidth: 1.2)
+                                                  startPoint: .topLeading, endPoint: .bottomTrailing), lineWidth: Panel.hairline)
 
             Text(completed ? busyLabel : label)
                 .font(.moodium(17, .semibold))
@@ -103,7 +103,7 @@ private struct SliderKnob: View {
                     .rotationEffect(.degrees(-24))
                     .offset(x: -s * 0.11, y: -s * 0.22)
                 Circle().strokeBorder(LinearGradient(colors: [.white, .white.opacity(0.25), .white.opacity(0.7)],
-                                                     startPoint: .top, endPoint: .bottom), lineWidth: 1.2)
+                                                     startPoint: .top, endPoint: .bottom), lineWidth: Panel.hairline)
                 Image(systemName: completed ? "checkmark" : "chevron.right")
                     .font(.system(size: s * 0.34, weight: .bold))
                     .foregroundStyle(world.fill.opacity(0.95))

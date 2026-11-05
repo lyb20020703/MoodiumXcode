@@ -65,6 +65,7 @@ struct HomeView: View {
         .onChange(of: app.moodCheck) { _, request in if request == nil { visits = MoodLog.load() } }
         #if MOODIUM_AUTOPILOT
         .onReceive(NotificationCenter.default.publisher(for: .init("AutopilotOpenJournal"))) { _ in showJournal = true }
+        .onAppear { if ProcessInfo.processInfo.environment["SETTINGS"] != nil { showSettings = true } }
         #endif
     }
 
@@ -101,7 +102,7 @@ struct HomeView: View {
 
     private var line: String {
         if let mood = app.preSample?.mood { return MoodCopy.text("rec.short.\(mood.rawValue)", app.language) }
-        return app.t("今天也来捏一捏，放松一下吧～", "Come squeeze a little and unwind～")
+        return app.t("今天也来放松一会儿吧", "Take a moment to unwind")
     }
 
     private func moodiColumn(compact: Bool) -> some View {
@@ -113,7 +114,7 @@ struct HomeView: View {
                     .multilineTextAlignment(.center)
             }
             .padding(.horizontal, 18).padding(.vertical, 10)
-            .glass(RoundedRectangle(cornerRadius: 20, style: .continuous), tint: app.preSample?.mood.tint, amount: 0.18)
+            .glass(RoundedRectangle(cornerRadius: 22, style: .continuous), tint: app.preSample?.mood.tint, amount: 0.18)
 
             // the 2D Moodi: face follows today's mood; tap to poke
             FlatMoodi(mood: app.preSample?.mood, size: size) { pokeMoodi() }
@@ -123,13 +124,14 @@ struct HomeView: View {
                 HStack(spacing: 7) {
                     if let sample = app.preSample {
                         Image(asset: sample.mood.icon).resizable().frame(width: 17, height: 17)
-                        Text(MoodCopy.text("rec.today", app.language, ["mood": sample.mood.name(app.language)]))
-                        Text("·").foregroundStyle(Palette.textMuted)
-                        Text(app.t("再测一次", "Check again")).foregroundStyle(Palette.textMuted)
+                        Text(app.t("今日心情：\(sample.mood.name(.zh))", "Today: \(sample.mood.name(.en))"))
                     } else {
                         Image(asset: "icon_mood_neutral").resizable().frame(width: 17, height: 17)
-                        Text(app.t("测测今天的心情", "How do you feel today?"))
+                        Text(app.t("记录今天的心情", "Check in on your mood"))
                     }
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 11, weight: .bold))
+                        .foregroundStyle(Palette.textMuted)
                 }
                 .font(.moodium(14, .semibold))
                 .padding(.horizontal, 14).padding(.vertical, 9)
@@ -166,7 +168,7 @@ struct HomeView: View {
                     .frame(width: 120, height: 92)
                     VStack(alignment: .leading, spacing: 4) {
                         Text(app.t("捏捏小世界", "Squeeze worlds")).font(.moodium(22, .bold))
-                        Text(app.t("把掉进感官袋的 Moodi 挤出来", "Squeeze Moodi out of the sensory bag"))
+                        Text(app.t("把 Moodi 从感官袋里挤出来", "Squeeze Moodi out of the sensory bag"))
                             .font(.moodium(13)).foregroundStyle(Palette.textMuted)
                             .fixedSize(horizontal: false, vertical: true)
                     }
@@ -181,13 +183,13 @@ struct HomeView: View {
             .buttonStyle(PressScaleStyle())
 
             HStack(spacing: 12) {
-                smallCard(icon: "wind", title: app.t("许愿风铃", "Wish chimes"),
+                smallCard(icon: "wind", title: app.t("许愿风铃", "Wish Chimes"),
                           detail: wishCount == 0 ? app.t("写下一个小心愿", "Write a little wish")
-                                                 : app.t("已经挂了 \(wishCount) 个", "\(wishCount) hanging"),
+                                                 : app.t("已挂 \(wishCount) 个心愿", wishCount == 1 ? "1 wish" : "\(wishCount) wishes"),
                           tint: Color(hex: 0xFFB3D1), height: small) {
                     app.openWish(app.lastWorld)
                 }
-                smallCard(icon: "chart.line.uptrend.xyaxis", title: app.t("心情记录", "Mood journal"),
+                smallCard(icon: "chart.line.uptrend.xyaxis", title: app.t("心情记录", "Mood Journal"),
                           detail: journalDetail, tint: Color(hex: 0x9BE8B4), height: small) {
                     withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) { showJournal = true }
                 }
@@ -197,7 +199,7 @@ struct HomeView: View {
 
     private var journalDetail: String {
         guard let last = visits.last(where: { $0.before != nil && $0.after != nil }), let b = last.before, let a = last.after else {
-            return visits.isEmpty ? app.t("看看每次的心情变化", "See how each visit felt") : app.t("\(visits.count) 次记录", "\(visits.count) visits")
+            return visits.isEmpty ? app.t("查看心情变化", "See how you felt") : app.t("\(visits.count) 次记录", "\(visits.count) visits")
         }
         return "\(b.mood.name(app.language)) → \(a.mood.name(app.language))"
     }
@@ -229,13 +231,13 @@ struct MoodJournal: View {
             Color.black.opacity(0.35).ignoresSafeArea().onTapGesture { close() }
             VStack(alignment: .leading, spacing: 12) {
                 HStack {
-                    Text(app.t("心情记录", "Mood journal")).font(.moodium(22, .bold))
+                    Text(app.t("心情记录", "Mood Journal")).font(.moodium(22, .bold))
                     Spacer()
-                    GlassIconButton(symbol: "xmark", size: 34) { close() }
+                    GlassIconButton(symbol: "xmark", size: Panel.control) { close() }
                 }
                 if visits.isEmpty {
-                    Text(app.t("还没有记录。进小世界前测一测心情，救出 Moodi 离开时再测一次，这里就会记下变化。",
-                               "Nothing yet. Check your mood before a world and again when you leave after freeing Moodi, and the change shows up here."))
+                    Text(app.t("还没有记录。进入小世界前后各记录一次心情，变化会显示在这里。",
+                               "Nothing yet. Check in before and after a world, and the change shows up here."))
                         .font(.moodium(14)).foregroundStyle(Palette.textMuted)
                         .fixedSize(horizontal: false, vertical: true)
                 } else {
@@ -244,15 +246,16 @@ struct MoodJournal: View {
                             ForEach(Array(visits.reversed().enumerated()), id: \.offset) { _, v in row(v) }
                         }
                     }
-                    .frame(maxHeight: 250)
+                    // as tall as the rows, up to four of them
+                    .frame(height: min(4, CGFloat(visits.count)) * 58 - 8)
                 }
                 Label(MoodCopy.text("compare.privacy", app.language), systemImage: "lock.fill")
                     .font(.moodium(12)).foregroundStyle(Palette.textMuted)
             }
             .foregroundStyle(.white)
-            .padding(22)
+            .padding(Panel.padding)
             .frame(width: 500)
-            .glass(RoundedRectangle(cornerRadius: 28, style: .continuous), tint: Palette.smoke, amount: 0.6)
+            .glass(Panel.shape, tint: Palette.smoke, amount: 0.6)
             .offCrease()
         }
     }
@@ -263,10 +266,14 @@ struct MoodJournal: View {
         return HStack(spacing: 12) {
             Image(asset: world.icon).resizable().scaledToFit().frame(width: 30, height: 30)
             VStack(alignment: .leading, spacing: 2) {
-                Text(date.formatted(.dateTime.month().day().hour().minute())).font(.moodium(13, .semibold))
-                Text(app.t(String(format: "%@ · %.1f 分钟 · 捏了 %d 次", world.name(.zh), v.seconds / 60, v.squeezes),
-                           String(format: "%@ · %.1f min · %d squeezes", world.name(.en), v.seconds / 60, v.squeezes)))
-                    .font(.moodium(12)).foregroundStyle(Palette.textMuted)
+                Text(date.formatted(.dateTime.month().day().hour().minute().locale(Locale(identifier: app.language == .zh ? "zh_CN" : "en_US"))))
+                    .font(.moodium(13, .semibold))
+                HStack(spacing: 10) {
+                    Text(world.name(app.language))
+                    Text(app.t(String(format: "%.1f 分钟", v.seconds / 60), String(format: "%.1f min", v.seconds / 60)))
+                    Text(app.t("\(v.squeezes) 次", "\(v.squeezes) squeezes"))
+                }
+                .font(.moodium(12)).foregroundStyle(Palette.textMuted)
             }
             Spacer()
             face(v.before?.mood)
@@ -274,6 +281,7 @@ struct MoodJournal: View {
             face(v.after?.mood)
         }
         .padding(.horizontal, 12).padding(.vertical, 8)
+        .frame(height: 50)
         .glass(RoundedRectangle(cornerRadius: 16, style: .continuous), shadow: false)
     }
 

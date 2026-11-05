@@ -18,6 +18,21 @@ extension Font {
     }
 }
 
+// MARK: - Panels
+
+/// Shared sizes for the glass panels (settings, help, journal, guides, cards). The corner radius
+/// is the close button's radius plus the padding, so a control in a corner sits concentric with it.
+enum Panel {
+    static let padding: CGFloat = 20
+    /// Close buttons and compact buttons are this tall.
+    static let control: CGFloat = 36
+    static let radius: CGFloat = padding + control / 2
+    /// Every border and divider.
+    static let hairline: CGFloat = 0.5
+
+    static var shape: RoundedRectangle { RoundedRectangle(cornerRadius: radius, style: .continuous) }
+}
+
 // MARK: - Liquid glass
 
 /// The glass surface used across the visionOS UI: blur, a soft white sheen and a bright rim.
@@ -39,7 +54,7 @@ struct GlassSurface: ViewModifier {
             }
             .overlay {
                 shape.stroke(LinearGradient(colors: [.white.opacity(0.75), .white.opacity(0.12), .white.opacity(0.42)],
-                                            startPoint: .topLeading, endPoint: .bottomTrailing), lineWidth: 1)
+                                            startPoint: .topLeading, endPoint: .bottomTrailing), lineWidth: Panel.hairline)
             }
             .shadow(color: .black.opacity(shadow ? 0.28 : 0), radius: 14, y: 6)
     }

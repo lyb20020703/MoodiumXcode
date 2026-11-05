@@ -53,13 +53,10 @@ enum MoodKind: String, Codable, CaseIterable, Identifiable {
         }
     }
 
-    /// "开心 · 愉快、有活力"
-    func label(_ l: Language) -> String { MoodCopy.text("mood.\(rawValue)", l) }
     /// "开心"
-    func name(_ l: Language) -> String {
-        let full = label(l)
-        return String(full.split(separator: "·").first ?? Substring(full)).trimmingCharacters(in: .whitespaces)
-    }
+    func name(_ l: Language) -> String { MoodCopy.text("mood.\(rawValue)", l) }
+    /// "愉快、有活力"
+    func detail(_ l: Language) -> String { MoodCopy.text("mood.\(rawValue).desc", l) }
 }
 
 enum MoodComparison { case better, same, worse }
@@ -117,48 +114,52 @@ enum MoodLog {
 /// MoodCheckCopy.cs, with the sticker / bag lines reworded for the phone.
 enum MoodCopy {
     static let table: [String: (String, String)] = [
-        "plate.kicker": ("Moodi 想知道", "Moodi wants to know"),
         "plate.title.pre": ("你现在的心情怎么样？", "How are you feeling right now?"),
         "plate.title.post": ("现在呢？", "And now?"),
-        "plate.hint": ("拖动 Moodi，或直接点一个心情", "Drag Moodi, or tap a mood"),
+        "plate.hint": ("拖动 Moodi，或点选一个心情", "Drag Moodi, or tap a mood"),
         "axis.up": ("精力充沛", "Energized"),
         "axis.down": ("有点累", "Tired"),
         "axis.left": ("不太好", "Not great"),
         "axis.right": ("还不错", "Pretty good"),
-        "mood.happy": ("开心 · 愉快、有活力", "Happy · cheerful, energetic"),
-        "mood.calm": ("平静 · 放松、安稳", "Calm · relaxed, settled"),
-        "mood.neutral": ("一般 · 说不上好坏", "Okay · somewhere in between"),
-        "mood.low": ("低落 · 有点累、提不起劲", "Low · tired, a bit down"),
-        "mood.tense": ("烦躁 · 紧张、有压力", "Tense · stressed, on edge"),
+        "mood.happy": ("开心", "Happy"),
+        "mood.calm": ("平静", "Calm"),
+        "mood.neutral": ("一般", "Okay"),
+        "mood.low": ("低落", "Low"),
+        "mood.tense": ("烦躁", "Tense"),
+        "mood.happy.desc": ("愉快、有活力", "cheerful, energetic"),
+        "mood.calm.desc": ("放松、安稳", "relaxed, settled"),
+        "mood.neutral.desc": ("说不上好坏", "somewhere in between"),
+        "mood.low.desc": ("有点累、提不起劲", "tired, a bit down"),
+        "mood.tense.desc": ("紧张、有压力", "stressed, on edge"),
         "confirm.title": ("你现在感觉{mood}，对吗？", "So you're feeling {mood}?"),
-        "confirm.yes": ("对", "That's right"),
-        "confirm.adjust": ("再调调", "Adjust"),
+        "confirm.yes": ("是的", "Yes"),
+        "confirm.adjust": ("再调整", "Adjust"),
         "skip": ("跳过", "Skip"),
-        "rec.happy": ("好心情要放大！去糖果世界撒点糖吧", "Let's make a good mood even better in Candy World"),
-        "rec.calm": ("这份平静很珍贵，去森林里慢慢待一会儿", "Let's keep this calm going in Nature World"),
-        "rec.neutral": ("都可以哦，要不先去森林里走走？", "Either is fine. How about Nature World?"),
-        "rec.low": ("给自己一点甜吧，轻轻捏一捏，充充电", "A little sweetness might help. Let's try Candy World"),
-        "rec.tense": ("先跟着感官袋慢慢呼吸，让自己松下来", "Let's slow down and breathe together in Nature World"),
+        "rec.happy": ("好心情，值得多留一会儿", "A good mood is worth keeping"),
+        "rec.calm": ("这份平静很珍贵，慢慢待一会儿", "This calm is worth keeping"),
+        "rec.neutral": ("两个世界都适合，先随意走走", "Either world works. Start anywhere"),
+        "rec.low": ("给自己一点甜，轻轻捏一捏", "A little sweetness might help"),
+        "rec.tense": ("跟着呼吸，慢慢放松下来", "Breathe slowly and let it ease"),
         "rec.today": ("现在：{mood}", "Now: {mood}"),
-        "rec.other": ("也想去另一个？完全可以", "Prefer the other one? That's fine too"),
+        "rec.other": ("也可以去{world}", "Or try {world}"),
         "rec.cta": ("去{world}", "Go to {world}"),
-        "rec.retry": ("再测一次", "Check again"),
-        "rec.short.happy": ("好心情，再加点甜", "Add a little sweetness"),
-        "rec.short.calm": ("把这份平静带进森林", "Take this calm into the woods"),
-        "rec.short.neutral": ("先去森林走走吧", "Maybe a walk in the woods"),
-        "rec.short.low": ("给自己一点甜吧", "A little sweetness might help"),
-        "rec.short.tense": ("去森林里慢慢呼吸", "Breathe slowly in the forest"),
-        "rec.mode": ("推荐玩法：{mode}", "Suggested play: {mode}"),
+        "rec.retry": ("重新记录", "Check again"),
+        "rec.short.happy": ("让好心情多留一会儿", "Make a good mood last"),
+        "rec.short.calm": ("把这份平静带进自然世界", "Take this calm into Nature World"),
+        "rec.short.neutral": ("先去自然世界走走", "Maybe start with Nature World"),
+        "rec.short.low": ("给自己一点甜", "A little sweetness might help"),
+        "rec.short.tense": ("去自然世界慢慢呼吸", "Breathe slowly in Nature World"),
+        "rec.mode": ("推荐玩法：{mode}", "Suggested mode: {mode}"),
         "tag.pick": ("Moodi 推荐", "Moodi's pick"),
         "compare.kicker": ("在{world}待了一会儿之后", "After some time in {world}"),
-        "compare.better": ("感觉轻松了一些呢", "Seems a little lighter now"),
+        "compare.better": ("感觉轻松了一些", "A little lighter now"),
         "compare.same": ("谢谢你陪自己待了一会儿", "Thanks for spending a moment with yourself"),
         "compare.worse": ("没关系，有些日子就是这样。想再待一会儿也可以", "That's okay. Some days are like that. Stay a little longer if you like"),
         "compare.before": ("进入前", "Before"),
         "compare.now": ("现在", "Now"),
-        "compare.time": ("停留", "Time spent"),
-        "compare.squeezes": ("慢慢捏了", "Squeezes"),
-        "compare.privacy": ("这条记录只保存在这台设备上", "This record stays on this device"),
+        "compare.time": ("停留时长", "Time"),
+        "compare.squeezes": ("按压次数", "Squeezes"),
+        "compare.privacy": ("记录仅保存在本机", "Saved only on this device"),
         "compare.continue": ("继续", "Continue"),
     ]
 

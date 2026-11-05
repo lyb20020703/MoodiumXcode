@@ -67,7 +67,8 @@ struct WishView: View {
         VStack {
             HStack(spacing: 10) {
                 GlassIconButton(symbol: "chevron.left") { back() }
-                if wish.mode != .garden || wish.records.isEmpty {
+                // the garden panel already carries the title
+                if wish.mode != .garden {
                     HStack(spacing: 6) {
                         Image(asset: world.icon).resizable().scaledToFit().frame(width: 20, height: 20)
                         Text(app.t("许愿风铃", "Wish Chimes")).font(.moodium(15, .semibold))
@@ -136,23 +137,23 @@ struct WishView: View {
         VStack(spacing: 10) {
             Text(app.t("许愿风铃", "Wish Chimes")).font(.moodium(24, .bold))
             Text(wish.records.isEmpty
-                 ? app.t("写下一件想放下的事，或者一个小心愿", "Write down something to let go of, or a little wish")
-                 : app.t("这里已经挂了 \(wish.records.count) 个心愿", wish.records.count == 1 ? "1 wish is hanging here" : "\(wish.records.count) wishes are hanging here"))
+                 ? app.t("写下想放下的事，或一个小心愿", "Write down something to let go of, or a little wish")
+                 : app.t("已挂 \(wish.records.count) 个心愿", wish.records.count == 1 ? "1 wish hanging" : "\(wish.records.count) wishes hanging"))
                 .font(.moodium(15)).foregroundStyle(Palette.textMuted)
             Button { wish.beginWriting() } label: {
-                Label(app.t("写一张心愿", "Write a wish"), systemImage: "pencil.line")
+                Label(app.t("写心愿", "Write a wish"), systemImage: "pencil.line")
             }
             .buttonStyle(GlassButtonStyle(tint: world.accent, prominent: true))
             .padding(.top, 4)
             if !wish.records.isEmpty {
-                Text(app.t("点一下风铃会响；倾斜手机它们会摇，摇一摇手机全部响起来",
-                           "Tap a chime to ring it. Tilt the phone to sway them, shake to ring them all"))
+                Text(app.t("轻点风铃或摇晃手机，风铃会响", "Tap a chime or shake the phone to ring them"))
                     .font(.moodium(12)).foregroundStyle(Palette.textMuted)
                     .multilineTextAlignment(.center)
             }
         }
-        .padding(.horizontal, 26).padding(.vertical, 18)
-        .glass(RoundedRectangle(cornerRadius: 26, style: .continuous), tint: Palette.smoke, amount: 0.45)
+        .padding(Panel.padding)
+        .frame(minWidth: 320)
+        .glass(Panel.shape, tint: Palette.smoke, amount: 0.45)
         .frame(maxWidth: 440)
         .position(x: size.width / 2, y: crease.map { $0.bottom.midY - m.bottom / 2 }
                   ?? (wish.records.isEmpty ? size.height / 2 : max(chimeH + 60, size.height * 0.6)))
@@ -223,7 +224,7 @@ struct WishView: View {
             let hintPoint = { let b = buttonsPoint(size, c: c, paper: paper, chipW: chipW, btnH: btnH)
                               return CGPoint(x: b.x, y: b.y + btnH * 1.65) }()
             if !wish.canRelease && wish.cursor == nil {
-                Text(app.t("用手指在纸条上写字", "Write on the paper with your finger"))
+                Text(app.t("用手指在纸条上书写", "Write on the paper with your finger"))
                     .font(.moodium(12, .medium)).foregroundStyle(.white.opacity(0.8))
                     .padding(.horizontal, 10).padding(.vertical, 5)
                     .glass(shadow: false)
@@ -231,7 +232,7 @@ struct WishView: View {
                     .position(hintPoint)
                     .allowsHitTesting(false)
             } else if wish.canRelease {
-                Text(app.t("写好了？点放飞，或者把手机往上托一下", "Done? Tap Release, or lift the phone up"))
+                Text(app.t("点放飞，或将手机向上托起", "Tap Release, or lift the phone up"))
                     .font(.moodium(12, .medium)).foregroundStyle(.white.opacity(0.8))
                     .padding(.horizontal, 10).padding(.vertical, 5)
                     .glass(shadow: false)

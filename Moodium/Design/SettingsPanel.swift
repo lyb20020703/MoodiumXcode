@@ -15,7 +15,7 @@ struct SettingsPanel: View {
                 HStack {
                     Text(app.t("设置", "Settings")).font(.moodium(22, .bold))
                     Spacer()
-                    GlassIconButton(symbol: "xmark", size: 36) { close() }
+                    GlassIconButton(symbol: "xmark", size: Panel.control) { close() }
                 }
                 row(app.t("语言", "Language")) {
                     GlassSegmented(options: [(Language.zh, "中文"), (Language.en, "English")], selection: $app.language)
@@ -26,16 +26,11 @@ struct SettingsPanel: View {
                                              (Sensitivity.firm, app.t("稳重", "Low"))],
                                    selection: $app.sensitivity)
                 }
-                Text(app.t("两种方式随时都能捏捏：把手机放在感官袋中间按压袋子两侧，或者直接按住屏幕再松开。",
-                           "Two ways to squeeze, both always on: rest the phone on the sensory bag and press either side, or press and release the screen."))
-                    .font(.moodium(13))
-                    .foregroundStyle(Palette.textMuted)
-                    .fixedSize(horizontal: false, vertical: true)
             }
             .foregroundStyle(.white)
-            .padding(24)
-            .frame(width: 430)
-            .glass(RoundedRectangle(cornerRadius: 30, style: .continuous), tint: Palette.smoke, amount: 0.6)
+            .padding(Panel.padding)
+            .frame(width: 460)
+            .glass(Panel.shape, tint: Palette.smoke, amount: 0.6)
             .offCrease()
         }
     }
@@ -43,6 +38,7 @@ struct SettingsPanel: View {
     private func row<Content: View>(_ title: String, @ViewBuilder content: () -> Content) -> some View {
         HStack {
             Text(title).font(.moodium(16, .medium)).foregroundStyle(Palette.labelUnselected)
+                .lineLimit(1).fixedSize()
             Spacer(minLength: 16)
             content()
         }
@@ -85,6 +81,6 @@ struct GlassSegmented<Value: Hashable>: View {
         }
         .padding(4)
         .background(Capsule().fill(.white.opacity(0.08)))
-        .overlay(Capsule().strokeBorder(.white.opacity(0.2), lineWidth: 1))
+        .overlay(Capsule().strokeBorder(.white.opacity(0.24), lineWidth: Panel.hairline))
     }
 }

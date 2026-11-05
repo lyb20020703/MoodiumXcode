@@ -695,7 +695,7 @@ final class SqueezeDirector: ObservableObject {
         case "hold": return language == .zh ? "按住\(thing)，慢慢吸气" : "Hold \(thing), breathe in slowly"
         case "longer": return language == .zh ? "可以按久一点，跟着光慢慢吸气" : "Hold a little longer, follow the light"
         case "rhythm": return language == .zh ? "光圈碰到圆环时，按一下\(thing)" : "Squeeze when the light reaches the ring"
-        case "follow": return language == .zh ? "节拍开始跟着你的节奏走了" : "The beat now follows you"
+        case "follow": return language == .zh ? "节拍已跟上你的节奏" : "The beat now follows you"
         case "slow":
             return world == .candy ? (language == .zh ? "慢一点，跟着光圈，糖果会更多" : "A little slower — follow the ring for more candy")
                                    : (language == .zh ? "慢一点，跟着光圈，花会开得更多" : "A little slower — follow the ring for more flowers")
