@@ -23,6 +23,7 @@ struct MoodVisitMetrics: Equatable {
 struct MoodCheckView: View {
     @EnvironmentObject private var app: AppModel
     @Environment(\.screenMargins) private var m
+    @Environment(\.crease) private var crease
     let request: MoodCheckRequest
 
     private enum Step { case plate, confirm, result }
@@ -46,14 +47,29 @@ struct MoodCheckView: View {
             let layout = portrait ? AnyLayout(VStackLayout(spacing: 20)) : AnyLayout(HStackLayout(spacing: max(24, geo.size.width * 0.05)))
             ZStack {
                 backdrop
-                layout {
-                    plateView(size: plate)
-                        .frame(width: plate + 70, height: plate + 56)
-                    side
-                        .frame(maxWidth: 380, alignment: .leading)
+                if let crease {
+                    // the iPhone Duo's fold across the middle: the plate above it, the questions below
+                    let fit = min(geo.size.width * 0.66, crease.top.height - m.top - 80, 330)
+                    CreaseStack(crease: crease) {
+                        plateView(size: fit)
+                            .frame(width: fit + 70, height: fit + 56)
+                            .padding(.top, m.top + 20)
+                    } bottom: {
+                        side
+                            .frame(maxWidth: 420, alignment: .leading)
+                            .padding(.horizontal, m.leading + 8)
+                            .padding(.bottom, m.bottom)
+                    }
+                } else {
+                    layout {
+                        plateView(size: plate)
+                            .frame(width: plate + 70, height: plate + 56)
+                        side
+                            .frame(maxWidth: 380, alignment: .leading)
+                    }
+                    .padding(.leading, m.leading + 8).padding(.trailing, m.trailing + 8)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
-                .padding(.leading, m.leading + 8).padding(.trailing, m.trailing + 8)
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
 
                 if !isPost && step != .result {
                     Button(MoodCopy.text("skip", app.language)) { finish(nil) }

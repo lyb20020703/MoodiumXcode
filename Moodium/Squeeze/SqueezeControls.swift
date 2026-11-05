@@ -103,6 +103,7 @@ struct ModeHelpCard: View {
             .padding(22)
             .frame(width: 440)
             .glass(RoundedRectangle(cornerRadius: 28, style: .continuous), tint: Palette.smoke, amount: 0.6)
+            .offCrease()
         }
     }
 

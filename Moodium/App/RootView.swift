@@ -10,7 +10,21 @@ struct RootView: View {
         // ScreenMargins for its edge controls (see ScreenMargins).
         Color.clear
             .readSafeArea { safe in margins = Self.margins(for: safe) }
-            .overlay { screens.ignoresSafeArea() }
+            .overlay {
+                // the whole screen: where the Duo's fold crosses it, if it does
+                GeometryReader { geo in
+                    let crease = Crease.detect(geo)
+                    screens.environment(\.crease, crease)
+                    #if MOODIUM_AUTOPILOT
+                    // CREASE_LINE=1 marks the fold in test screenshots
+                    if let crease, ProcessInfo.processInfo.environment["CREASE_LINE"] != nil {
+                        Rectangle().fill(.red.opacity(0.35)).frame(height: crease.band.height)
+                            .position(x: crease.band.midX, y: crease.band.midY).allowsHitTesting(false)
+                    }
+                    #endif
+                }
+                .ignoresSafeArea()
+            }
             .environment(\.screenMargins, margins)
             .environment(\.hinge, hinge)
             .modifier(HingeObserver { hinge = $0 })

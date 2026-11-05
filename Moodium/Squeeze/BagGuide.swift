@@ -38,6 +38,7 @@ struct BagGuide: View {
             .padding(22)
             .glass(RoundedRectangle(cornerRadius: 30, style: .continuous), tint: Palette.smoke, amount: 0.6)
             .padding(16)
+            .offCrease()
         }
         .foregroundStyle(.white)
     }

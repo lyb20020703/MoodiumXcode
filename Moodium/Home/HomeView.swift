@@ -6,6 +6,7 @@ import SwiftUI
 struct HomeView: View {
     @EnvironmentObject private var app: AppModel
     @Environment(\.screenMargins) private var m
+    @Environment(\.crease) private var crease
     @State private var showSettings = false
     @State private var showJournal = false
     @State private var appeared = false
@@ -22,15 +23,29 @@ struct HomeView: View {
                 MoodBackdrop(colors: backdropColors)
                 TwinkleField(count: 26, color: Color(hex: 0xFFE6F3))
 
-                layout {
-                    moodiColumn(compact: compact)
-                        .frame(maxWidth: .infinity)
-                    cards(compact: compact)
-                        .frame(width: portrait ? min(460, geo.size.width - m.leading - m.trailing) : min(440, geo.size.width * 0.5))
+                Group {
+                    if let crease {
+                        // the iPhone Duo's fold across the middle: Moodi above it, the cards below
+                        CreaseStack(crease: crease) {
+                            moodiColumn(compact: crease.top.height < 470)
+                                .padding(.top, m.top + 30)
+                        } bottom: {
+                            cards(compact: compact)
+                                .frame(width: min(460, geo.size.width - m.leading - m.trailing))
+                                .padding(.bottom, m.bottom)
+                        }
+                    } else {
+                        layout {
+                            moodiColumn(compact: compact)
+                                .frame(maxWidth: .infinity)
+                            cards(compact: compact)
+                                .frame(width: portrait ? min(460, geo.size.width - m.leading - m.trailing) : min(440, geo.size.width * 0.5))
+                        }
+                        .padding(.leading, m.leading + 4).padding(.trailing, m.trailing)
+                        .padding(.top, m.top + (compact ? 30 : 46))
+                        .padding(.bottom, m.bottom)
+                    }
                 }
-                .padding(.leading, m.leading + 4).padding(.trailing, m.trailing)
-                .padding(.top, m.top + (compact ? 30 : 46))
-                .padding(.bottom, m.bottom)
                 .opacity(appeared ? 1 : 0)
                 .offset(y: appeared ? 0 : 14)
 
@@ -238,6 +253,7 @@ struct MoodJournal: View {
             .padding(22)
             .frame(width: 500)
             .glass(RoundedRectangle(cornerRadius: 28, style: .continuous), tint: Palette.smoke, amount: 0.6)
+            .offCrease()
         }
     }
 

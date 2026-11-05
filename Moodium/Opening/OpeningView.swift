@@ -7,6 +7,7 @@ import AVFoundation
 struct OpeningView: View {
     @EnvironmentObject private var app: AppModel
     @Environment(\.screenMargins) private var m
+    @Environment(\.crease) private var crease
     @State private var player = OpeningView.makePlayer()
     @State private var step: Step = .film
     @State private var endObserver: NSObjectProtocol?
@@ -15,7 +16,11 @@ struct OpeningView: View {
 
     var body: some View {
         GeometryReader { geo in
-            let filmWidth = min(geo.size.width * 0.86, geo.size.height * 2.36 * 0.86)
+            // on the iPhone Duo held upright the film plays above the fold and the question sits below it
+            let filmArea = crease?.top.size ?? geo.size
+            let filmWidth = min(filmArea.width * (crease == nil ? 0.86 : 0.96), filmArea.height * 2.36 * 0.86)
+            let filmY = crease.map { $0.top.midY + 10 } ?? geo.size.height / 2
+            let choicesY = crease.map { $0.bottom.minY + $0.bottom.height * 0.35 } ?? geo.size.height * 0.64
             ZStack {
                 MoodBackdrop()
                 TwinkleField(count: 24, color: Color(hex: 0xFFE6F3))
@@ -34,13 +39,14 @@ struct OpeningView: View {
                                                startPoint: .top, endPoint: .bottom)
                             }
                     }
-                    .scaleEffect(step == .film ? 1 : 0.62)
-                    .offset(y: step == .film ? 0 : -geo.size.height * 0.24)
+                    .scaleEffect(step == .film || crease != nil ? 1 : 0.62)
+                    .position(x: geo.size.width / 2, y: filmY)
+                    .offset(y: step == .film || crease != nil ? 0 : -geo.size.height * 0.24)
                     .allowsHitTesting(false)
 
                 if step != .film {
                     choices
-                        .offset(y: geo.size.height * 0.14)
+                        .position(x: geo.size.width / 2, y: choicesY)
                         .transition(.opacity.combined(with: .move(edge: .bottom)))
                 }
 

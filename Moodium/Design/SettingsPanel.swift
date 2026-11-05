@@ -36,6 +36,7 @@ struct SettingsPanel: View {
             .padding(24)
             .frame(width: 430)
             .glass(RoundedRectangle(cornerRadius: 30, style: .continuous), tint: Palette.smoke, amount: 0.6)
+            .offCrease()
         }
     }
 

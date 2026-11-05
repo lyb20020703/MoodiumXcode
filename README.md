@@ -104,5 +104,6 @@
 - **代码位置**：`Moodium/Foldable/Fold.swift`（折叠状态与上下两半的计算）、`Moodium/Foldable/FireworksSky.swift`（烟花与上半屏天空）；`SqueezeView` 按"舞台区 / 天空区"两个矩形摆放内容。
 - **编译要求**：折叠角度接口（`onHingeChange`、`reservedRegions(kind: .division)`）只在 iOS 27.1 SDK 里有，需要用 **Xcode 27.1** 编译。工程只在 iOS 27.1 及以上 SDK 下打开 `MOODIUM_DUO` 编译开关，用旧版 Xcode 编译时这部分代码不参与，应用照常运行。
 - **屏幕方向（避免被缩成小窗）**：只声明横屏的应用在 Duo 内屏竖着拿或半折时，会被系统缩成屏幕中间的一个横向小窗。所以 Info.plist 同时列出横屏和竖屏，再由 `Moodium/App/OrientationPolicy.swift` 在运行时决定：普通 iPhone 和 Duo 外屏这种细长屏幕仍然只能横屏，Duo 内屏这种接近方形的屏幕可以竖屏。开合 Duo（应用换到另一块屏幕）时会重新判断。
-- **竖屏**：展开的 Duo 竖着拿时，首页和心情盘改为上下排列；半折时走上面的"桌面姿态"布局。
+- **避开折痕**：Duo 内屏竖着拿时，不管展平还是半折，折痕都横在屏幕中间。每个页面都按"上看下点"分两半，内容不压在折痕上：开场动画、首页 Moodi、选世界的小岛、心情盘、风铃和纸条在上半屏；卡片、滑动进入、问题和快捷选项、心愿选项和放飞按钮在下半屏；捏捏世界上半屏是烟花天空，下半屏是舞台。设置、玩法、心情记录、感官袋引导这些弹窗会整个落到下半屏，放不下时自动缩小。
+- **代码位置**：折痕位置在 `Moodium/Foldable/Fold.swift` 的 `Crease`（优先读系统给的折痕区域，读不到时按屏幕中间算），通过环境值 `\.crease` 传给所有页面；`CreaseStack` 负责上下两半排版，`.offCrease()` 让弹窗避开折痕。Mac 测试版用竖屏窗口（669x951）模拟，`CREASE_LINE=1` 会把折痕标成红条。
 - **边距**：所有页面全屏绘制，边缘按钮按机型统一留边（`Moodium/Design/ScreenMargins.swift`），刚好避开灵动岛和圆角。

@@ -5,6 +5,7 @@ import SwiftUI
 struct WorldSelectView: View {
     @EnvironmentObject private var app: AppModel
     @Environment(\.screenMargins) private var m
+    @Environment(\.crease) private var crease
     @StateObject private var stage = CarouselStage()
     @State private var showSettings = false
     @State private var dragging = false
@@ -17,17 +18,25 @@ struct WorldSelectView: View {
 
     var body: some View {
         GeometryReader { geo in
+            // On the iPhone Duo held upright the islands stay above the fold (under the title)
+            // and the name and slide-to-enter below it.
+            let islands = crease.map { CGRect(x: 0, y: m.top + 64, width: geo.size.width, height: $0.top.height - m.top - 64 - Crease.gap) }
+                ?? CGRect(origin: .zero, size: geo.size)
             ZStack {
                 backdrop(size: geo.size)
 
                 CarouselView(stage: stage)
-                    .ignoresSafeArea()
+                    .frame(width: islands.width, height: islands.height)
+                    .contentShape(Rectangle())
                     .gesture(carouselDrag(width: geo.size.width))
+                    .position(x: islands.midX, y: islands.midY)
+                    .ignoresSafeArea()
 
-                placeholders(size: geo.size)
+                placeholders(in: islands)
 
                 MoodiPeek(world: world, line: inviteLine ?? world.moodiLine(app.language), visible: !dragging && !entering)
-                    .position(x: geo.size.width * 0.5 + min(geo.size.width * 0.17, 190), y: geo.size.height * 0.27)
+                    .position(x: islands.midX + min(islands.width * (crease == nil ? 0.17 : 0.24), 190),
+                              y: islands.minY + islands.height * (crease == nil ? 0.27 : 0.16))
 
                 overlay(size: geo.size)
 
@@ -38,6 +47,7 @@ struct WorldSelectView: View {
             .foregroundStyle(.white)
         }
         .onAppear {
+            frameIslands()
             stage.resetEnter()
             stage.select(app.lastWorld.index)
             entering = false
@@ -45,6 +55,7 @@ struct WorldSelectView: View {
         }
         .onDisappear { inviteWork?.cancel(); AudioDirector.shared.stopVoice() }
         .onChange(of: stage.selection) { _, _ in scheduleInvite() }
+        .onChange(of: crease) { _, _ in frameIslands() }
         .onChange(of: app.lastWorld) { _, w in if stage.selection != w.index { stage.select(w.index) } }
         .onChange(of: app.moodCheck) { _, request in if request == nil { scheduleInvite(force: true) } }
     }
@@ -78,7 +89,7 @@ struct WorldSelectView: View {
     }
 
     /// While a world's model is still loading, show its icon glowing in place.
-    private func placeholders(size: CGSize) -> some View {
+    private func placeholders(in area: CGRect) -> some View {
         ForEach(MoodWorld.allCases) { w in
             if !stage.loaded[w.index] {
                 let offset = CGFloat(w.index - stage.selection)
@@ -88,7 +99,7 @@ struct WorldSelectView: View {
                     .opacity(offset == 0 ? 0.9 : 0.4)
                     .scaleEffect(offset == 0 ? 1 : 0.7)
                     .shadow(color: w.accent.opacity(0.6), radius: 24)
-                    .position(x: size.width / 2 + offset * size.width * 0.4, y: size.height * 0.44)
+                    .position(x: area.midX + offset * area.width * 0.4, y: area.minY + area.height * (crease == nil ? 0.44 : 0.5))
                     .phaseAnimator([0.92, 1.0]) { view, s in view.scaleEffect(s) } animation: { _ in .easeInOut(duration: 1.1) }
                     .allowsHitTesting(false)
             }
@@ -112,49 +123,63 @@ struct WorldSelectView: View {
             }
             .padding(.top, m.top)
 
-            Spacer()
-
-            VStack(spacing: 10) {
-                HStack(spacing: 8) {
-                    if app.recommendedWorld == world {
-                        HStack(spacing: 4) {
-                            Image(asset: "icon_star").resizable().frame(width: 11, height: 11)
-                            Text(MoodCopy.text("tag.pick", app.language)).font(.moodium(12, .bold))
-                        }
-                        .foregroundStyle(.white)
-                        .padding(.horizontal, 9).padding(.vertical, 4)
-                        .background(Capsule().fill(world.accent.opacity(0.85)))
-                        .transition(.scale(scale: 0.8).combined(with: .opacity))
-                    }
-                    Image(asset: world.icon).resizable().scaledToFit().frame(width: 26, height: 26)
-                    Text(world.name(app.language)).font(.moodium(20, .bold))
-                    Text("·").foregroundStyle(Palette.textMuted)
-                    Text(world.tagline(app.language)).font(.moodium(15)).foregroundStyle(Palette.textMuted)
-                }
-                // a soft glass strip so the name stays readable over the island's base
-                .padding(.horizontal, 14).padding(.vertical, 5)
-                .glass(tint: Palette.smoke, amount: 0.45, shadow: false)
-                .id(world)
-                .transition(.opacity)
-
-                GlassSlideToEnter(world: world, label: world.enterLabel(app.language),
-                                  busyLabel: app.t("正在进入…", "Entering…")) { enter() }
-                    .id("\(world.rawValue)-\(app.language.rawValue)")
-
-                HStack(spacing: 7) {
-                    ForEach(0..<2, id: \.self) { i in
-                        Capsule().fill(.white.opacity(stage.selection == i ? 1 : 0.3))
-                            .frame(width: stage.selection == i ? 20 : 7, height: 7)
-                    }
-                }
-                .animation(.spring(response: 0.3, dampingFraction: 0.8), value: stage.selection)
+            if let crease {
+                // centred in the half below the fold
+                Spacer(minLength: 0)
+                bottomGroup.frame(height: crease.bottom.height)
+            } else {
+                Spacer()
+                bottomGroup
             }
-            .animation(.easeInOut(duration: 0.3), value: world)
-            .padding(.bottom, m.bottom)
-            .opacity(dragging ? 0.35 : 1)
-            .animation(.easeOut(duration: 0.2), value: dragging)
         }
         .padding(.leading, m.leading).padding(.trailing, m.trailing)
+    }
+
+    private var bottomGroup: some View {
+        VStack(spacing: 10) {
+            HStack(spacing: 8) {
+                if app.recommendedWorld == world {
+                    HStack(spacing: 4) {
+                        Image(asset: "icon_star").resizable().frame(width: 11, height: 11)
+                        Text(MoodCopy.text("tag.pick", app.language)).font(.moodium(12, .bold))
+                    }
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 9).padding(.vertical, 4)
+                    .background(Capsule().fill(world.accent.opacity(0.85)))
+                    .transition(.scale(scale: 0.8).combined(with: .opacity))
+                }
+                Image(asset: world.icon).resizable().scaledToFit().frame(width: 26, height: 26)
+                Text(world.name(app.language)).font(.moodium(20, .bold))
+                Text("·").foregroundStyle(Palette.textMuted)
+                Text(world.tagline(app.language)).font(.moodium(15)).foregroundStyle(Palette.textMuted)
+            }
+            // a soft glass strip so the name stays readable over the island's base
+            .padding(.horizontal, 14).padding(.vertical, 5)
+            .glass(tint: Palette.smoke, amount: 0.45, shadow: false)
+            .id(world)
+            .transition(.opacity)
+
+            GlassSlideToEnter(world: world, label: world.enterLabel(app.language),
+                              busyLabel: app.t("正在进入…", "Entering…")) { enter() }
+                .id("\(world.rawValue)-\(app.language.rawValue)")
+
+            HStack(spacing: 7) {
+                ForEach(0..<2, id: \.self) { i in
+                    Capsule().fill(.white.opacity(stage.selection == i ? 1 : 0.3))
+                        .frame(width: stage.selection == i ? 20 : 7, height: 7)
+                }
+            }
+            .animation(.spring(response: 0.3, dampingFraction: 0.8), value: stage.selection)
+        }
+        .animation(.easeInOut(duration: 0.3), value: world)
+        .padding(.bottom, m.bottom)
+        .opacity(dragging ? 0.35 : 1)
+        .animation(.easeOut(duration: 0.2), value: dragging)
+    }
+
+    /// Above the fold the islands get a shorter area, so the camera closes in a little.
+    private func frameIslands() {
+        stage.camera.camera?.fieldOfView = crease == nil ? 30 : 24
     }
 
     /// "Swipe to pick" — or, once today's mood is checked (on the home screen, the one place to

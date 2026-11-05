@@ -6,6 +6,7 @@ import SwiftUI
 struct WishView: View {
     @EnvironmentObject private var app: AppModel
     @Environment(\.screenMargins) private var m
+    @Environment(\.crease) private var crease
     @StateObject private var wish: WishController
     @State private var flyStart: Date?
     @State private var showSettings = false
@@ -153,17 +154,27 @@ struct WishView: View {
         .padding(.horizontal, 26).padding(.vertical, 18)
         .glass(RoundedRectangle(cornerRadius: 26, style: .continuous), tint: Palette.smoke, amount: 0.45)
         .frame(maxWidth: 440)
-        .position(x: size.width / 2, y: wish.records.isEmpty ? size.height / 2 : max(chimeH + 60, size.height * 0.6))
+        .position(x: size.width / 2, y: crease.map { $0.bottom.midY - m.bottom / 2 }
+                  ?? (wish.records.isEmpty ? size.height / 2 : max(chimeH + 60, size.height * 0.6)))
     }
 
     // MARK: Writing
 
+    // On the iPhone Duo held upright the bell and paper sit above the fold (under the top bar)
+    // and the chips and buttons below it.
+    private var paperTop: CGFloat { m.top + 56 }
+
     private func paperSize(_ size: CGSize) -> CGSize {
-        let h = min(size.height * 0.68, 360)
+        // the bell above the paper adds about a third of the paper's height
+        let h = crease.map { min(($0.top.height - Crease.gap - paperTop) / 1.33, 360) } ?? min(size.height * 0.68, 360)
         return CGSize(width: h * 8.5 / 27.5, height: h)
     }
 
-    private func paperCenter(_ size: CGSize) -> CGPoint { CGPoint(x: size.width / 2, y: size.height * 0.6) }
+    private func paperCenter(_ size: CGSize) -> CGPoint {
+        guard let crease else { return CGPoint(x: size.width / 2, y: size.height * 0.6) }
+        let h = paperSize(size).height
+        return CGPoint(x: size.width / 2, y: crease.top.maxY - Crease.gap - h / 2)
+    }
 
     private func writing(_ size: CGSize) -> some View {
         let paper = paperSize(size)
@@ -198,7 +209,7 @@ struct WishView: View {
                     }
                 }
             }
-            .position(x: c.x - paper.width / 2 - 22 - chipW, y: c.y - 6)
+            .position(chipsPoint(size, c: c, paper: paper, chipW: chipW, btnW: btnH * 420 / 202))
 
             // right: release above rewrite
             VStack(spacing: btnH * 0.25) {
@@ -207,9 +218,10 @@ struct WishView: View {
                     .modifier(ReleaseHop(trigger: wish.releasePulseAt))
                 WishButton(base: "wish_btn_rewrite_\(l)", enabled: wish.canRewrite, height: btnH) { wish.rewrite() }
             }
-            .position(x: c.x + paper.width / 2 + 34 + btnH * 420 / 202 / 2, y: c.y - btnH * 0.3)
+            .position(buttonsPoint(size, c: c, paper: paper, chipW: chipW, btnH: btnH))
 
-            let hintPoint = CGPoint(x: c.x + paper.width / 2 + 34 + btnH * 420 / 202 / 2, y: c.y + btnH * 1.35)
+            let hintPoint = { let b = buttonsPoint(size, c: c, paper: paper, chipW: chipW, btnH: btnH)
+                              return CGPoint(x: b.x, y: b.y + btnH * 1.65) }()
             if !wish.canRelease && wish.cursor == nil {
                 Text(app.t("用手指在纸条上写字", "Write on the paper with your finger"))
                     .font(.moodium(12, .medium)).foregroundStyle(.white.opacity(0.8))
@@ -229,6 +241,22 @@ struct WishView: View {
                     .allowsHitTesting(false)
             }
         }
+    }
+
+    /// Centre of the chip grid: left of the paper, or the left part of the half below the fold.
+    private func chipsPoint(_ size: CGSize, c: CGPoint, paper: CGSize, chipW: CGFloat, btnW: CGFloat) -> CGPoint {
+        guard let crease else { return CGPoint(x: c.x - paper.width / 2 - 22 - chipW, y: c.y - 6) }
+        let total = chipW * 2.04 + 34 + btnW
+        return CGPoint(x: size.width / 2 - total / 2 + chipW * 1.02, y: crease.bottom.minY + Crease.gap + (crease.bottom.height - Crease.gap - m.bottom) * 0.42)
+    }
+
+    /// Centre of release / rewrite: right of the paper, or right of the chips below the fold.
+    private func buttonsPoint(_ size: CGSize, c: CGPoint, paper: CGSize, chipW: CGFloat, btnH: CGFloat) -> CGPoint {
+        let btnW = btnH * 420 / 202
+        guard crease != nil else { return CGPoint(x: c.x + paper.width / 2 + 34 + btnW / 2, y: c.y - btnH * 0.3) }
+        let total = chipW * 2.04 + 34 + btnW
+        let chips = chipsPoint(size, c: c, paper: paper, chipW: chipW, btnW: btnW)
+        return CGPoint(x: size.width / 2 + total / 2 - btnW / 2, y: chips.y - btnH * 0.45)
     }
 
     private func chip(_ id: String, height: CGFloat) -> some View {

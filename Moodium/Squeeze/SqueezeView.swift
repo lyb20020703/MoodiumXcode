@@ -13,6 +13,7 @@ struct SqueezeView: View {
     @State private var showHelp = false
     @State private var showBagGuide = false
     @Environment(\.hinge) private var hinge
+    @Environment(\.crease) private var crease
     @StateObject private var fireworks = FireworksShow()
     @State private var currentFold: TabletopFold?
 
@@ -25,9 +26,10 @@ struct SqueezeView: View {
 
     var body: some View {
         GeometryReader { geo in
-            // On a half-folded iPhone Duo (tabletop) the stage and controls take the bottom half
-            // and the top half becomes a fireworks sky; everywhere else both rects are the screen.
-            let fold = TabletopFold.detect(geo, hinge: hinge)
+            // When the iPhone Duo's fold crosses the screen (held upright, flat or half folded) the
+            // stage and controls take the bottom half and the top half becomes a fireworks sky;
+            // everywhere else both rects are the screen.
+            let fold = TabletopFold.detect(crease: crease, hinge: hinge)
             let full = CGRect(origin: .zero, size: geo.size)
             let stageRect = fold?.bottom ?? full
             let skyRect = fold?.top ?? full
@@ -74,7 +76,7 @@ struct SqueezeView: View {
 
                 // Moodi's lines and the guide: bottom of the screen, or just above the fold
                 pinned(fold == nil ? full : skyRect, .bottom,
-                       EdgeInsets(top: 0, leading: m.leading, bottom: fold == nil ? m.bottom : 12, trailing: m.trailing)) {
+                       EdgeInsets(top: 0, leading: m.leading, bottom: fold == nil ? m.bottom : Crease.gap + 6, trailing: m.trailing)) {
                     captions
                 }
 
@@ -225,7 +227,8 @@ struct SqueezeView: View {
                     }
                     .padding(.horizontal, 16).padding(.vertical, 9)
                     .glass(tint: Palette.lavender, amount: 0.2)
-                    .transition(.opacity.combined(with: .move(edge: .bottom)))
+                    // just above the fold it only fades, so it never slides across it
+                    .transition(crease == nil ? .opacity.combined(with: .move(edge: .bottom)) : .opacity)
                     .id(subtitle)
                 }
                 if let guide = director.guide, director.subtitle == nil {
