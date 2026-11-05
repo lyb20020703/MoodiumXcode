@@ -18,7 +18,7 @@ struct RockDetector {
 
     enum Hold { case began, ended }
 
-    // Tuning, in degrees and seconds, at the "适中" sensitivity (multiplied by `scale`).
+    // Tuning, in degrees and seconds, at the "灵敏" sensitivity (scale 1; the others multiply it).
     /// Tilt change since the last turn that counts as one squeeze.
     static let swing = 0.15
     /// The dip must move at least this fast (°/s), so slow settling never counts.

@@ -55,9 +55,10 @@ run("同一侧连续按 0.2°", seconds: 4.1, expect: 11...11) { t in
 run("轻按 0.18°，每秒一次", seconds: 6, expect: 6...6) { t in
     let i = Int(t); return press(t, at: Double(i), depth: 0.18, down: 0.2, hold: 0.2, up: 0.3)
 }
-// 4. very light 0.3° presses: missed at 适中, counted at 灵敏
-run("很轻 0.1°（适中）", seconds: 5, expect: 0...5) { t in let i = Int(t); return press(t, at: Double(i), depth: 0.1) }
-run("很轻 0.1°（灵敏）", seconds: 5, scale: 0.7, expect: 5...5) { t in let i = Int(t); return press(t, at: Double(i), depth: 0.3) }
+// 4. light presses: counted at 灵敏 (scale 1, the default in this file), missed at 适中 / 稳重
+run("轻 0.12°（适中）", seconds: 5, scale: 1.45, expect: 0...0) { t in let i = Int(t); return press(t, at: Double(i), depth: 0.12) }
+run("轻 0.18°（稳重）", seconds: 5, scale: 2.1, expect: 0...0) { t in let i = Int(t); return press(t, at: Double(i), depth: 0.18) }
+run("正常 0.4°（稳重）", seconds: 5, scale: 2.1, expect: 5...5) { t in let i = Int(t); return press(t, at: Double(i), depth: 0.4) }
 // 5. strong presses 3° with wobble on release
 run("用力按 3°，松手回弹 20%", seconds: 5, expect: 5...5) { t in
     let i = Int(t); return press(t, at: Double(i), depth: 3, down: 0.1, hold: 0.1, up: 0.15, wobble: 0.2)
@@ -80,6 +81,9 @@ run("回弹很大 35%（极端情况，仅参考，可能多算）", seconds: 5,
 }
 // 9. breath mode: hold 1.5° for 4 s, twice
 run("呼吸模式按住 4 秒 ×2", seconds: 12, holdMode: true, expect: 2...2, holds: 4) { t in
+    press(t, at: 1, depth: 1.5, down: 0.4, hold: 4, up: 0.6) + press(t, at: 7, depth: -1.5, down: 0.4, hold: 4, up: 0.6)
+}
+run("呼吸模式按住 4 秒 ×2（稳重）", seconds: 12, scale: 2.1, holdMode: true, expect: 2...2, holds: 4) { t in
     press(t, at: 1, depth: 1.5, down: 0.4, hold: 4, up: 0.6) + press(t, at: 7, depth: -1.5, down: 0.4, hold: 4, up: 0.6)
 }
 

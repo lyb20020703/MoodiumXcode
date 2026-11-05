@@ -15,7 +15,7 @@ enum Language: String { case zh, en }
 enum Sensitivity: Int, CaseIterable {
     case gentle, normal, firm
     /// Multiplier on the detection threshold (lower = more sensitive).
-    var thresholdScale: Double { [0.7, 1.0, 1.45][rawValue] }
+    var thresholdScale: Double { [1.0, 1.45, 2.1][rawValue] }
 }
 
 @MainActor
