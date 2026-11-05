@@ -38,18 +38,27 @@ struct SqueezeView: View {
             let ringCenter = CGPoint(x: stageRect.midX, y: stageRect.minY + stageRect.height * (fold == nil ? 0.19 : 0.17))
             let ringSize = fold == nil ? full.size : CGSize(width: stageRect.width, height: stageRect.height * 0.8)
             ZStack {
+                // above the fold: the same panorama, continuing up from the stage's sky
+                if let fold {
+                    PanoramaSky(stage: director.stage, stageHeight: fold.stage.height)
+                        .frame(width: fold.top.width, height: fold.top.height)
+                        .position(x: fold.top.midX, y: fold.top.midY)
+                        .allowsHitTesting(false)
+                }
+
                 SqueezeCanvas(director: director)
                     .gesture(touchGesture(width: canvasRect.width))
                     .simultaneousGesture(SpatialTapGesture(coordinateSpace: .local).onEnded { director.tap(at: $0.location) })
                     .frame(width: canvasRect.width, height: canvasRect.height)
                     .position(x: canvasRect.midX, y: canvasRect.midY)
 
-                // the sky above the fold, fading into the stage's own sky across it
+                // night falls toward the top so the fireworks glow
                 if let fold { TabletopSky(world: world, fold: fold) }
 
-                ModeAtmosphere(director: director, world: world)
-                    .frame(width: canvasRect.width, height: canvasRect.height)
-                    .position(x: canvasRect.midX, y: canvasRect.midY)
+                // over the whole screen when folded, so the edge light and dimming never sit on the fold
+                ModeAtmosphere(director: director, world: world, stageOffset: fold == nil ? 0 : canvasRect.minY)
+                    .frame(width: full.width, height: full.height)
+                    .position(x: full.midX, y: full.midY)
 
                 if fold != nil { FireworksLayer(show: fireworks) }
 
@@ -104,8 +113,8 @@ struct SqueezeView: View {
                 if showSettings { SettingsPanel(isPresented: $showSettings).transition(.opacity) }
             }
             .foregroundStyle(.white)
-            .onAppear { currentFold = fold }
-            .onChange(of: fold) { _, f in currentFold = f }
+            .onAppear { currentFold = fold; director.stage.setVignette(fold == nil) }
+            .onChange(of: fold) { _, f in currentFold = f; director.stage.setVignette(f == nil) }
         }
         .ignoresSafeArea()
         .onAppear {

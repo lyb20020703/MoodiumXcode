@@ -9,6 +9,9 @@ import SwiftUI
 struct ModeAtmosphere: View {
     @ObservedObject var director: SqueezeDirector
     let world: MoodWorld
+    /// Where the stage view starts inside this layer (the layer covers the whole screen when the
+    /// iPhone Duo's fold splits it, so its dimmed edges are the screen's, not the fold).
+    var stageOffset: CGFloat = 0
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
@@ -34,8 +37,8 @@ struct ModeAtmosphere: View {
 
     /// Where the light comes from: the pillow, or low in the middle until it is known.
     private func pillow(_ size: CGSize) -> CGPoint {
-        if let r = director.jellyRect, r.width > 0 { return CGPoint(x: r.midX, y: r.midY) }
-        return CGPoint(x: size.width / 2, y: size.height * 0.72)
+        if let r = director.jellyRect, r.width > 0 { return CGPoint(x: r.midX, y: r.midY + stageOffset) }
+        return CGPoint(x: size.width / 2, y: stageOffset + (size.height - stageOffset) * 0.72)
     }
 
     private func pillowWidth(_ size: CGSize) -> CGFloat {

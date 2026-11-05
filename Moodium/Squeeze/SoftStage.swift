@@ -78,6 +78,18 @@ final class SoftStage: NSObject, SCNSceneRendererDelegate, SCNPhysicsContactDele
     private let fov: Float = 40
 
     private var lastContact: TimeInterval = 0
+    private var panoramaTurnNow = SCNMatrix4Identity
+
+    /// The camera's vertical field of view in degrees.
+    var fieldOfView: Float { fov }
+
+    /// The panorama's current turn (the parallax), so the sky above the iPhone Duo's fold can
+    /// show the same panorama turned the same way.
+    func panoramaTurn() -> SCNMatrix4 { lock.lock(); defer { lock.unlock() }; return panoramaTurnNow }
+
+    /// The vignette darkens the top edge; with the sky continuing above the fold it would show
+    /// as a seam, so it is off while the fold splits the screen.
+    func setVignette(_ on: Bool) { cameraNode.camera?.vignettingIntensity = on ? 0.35 : 0 }
 
     init(world: MoodWorld) {
         self.world = world
@@ -497,7 +509,9 @@ final class SoftStage: NSObject, SCNSceneRendererDelegate, SCNPhysicsContactDele
 
         let yaw = px.x * 0.12
         let pitch = -0.06 + px.y * 0.05
-        scene.background.contentsTransform = SCNMatrix4Mult(SCNMatrix4MakeRotation(yaw, 0, 1, 0), SCNMatrix4MakeRotation(pitch, 1, 0, 0))
+        let turn = SCNMatrix4Mult(SCNMatrix4MakeRotation(yaw, 0, 1, 0), SCNMatrix4MakeRotation(pitch, 1, 0, 0))
+        scene.background.contentsTransform = turn
+        lock.lock(); panoramaTurnNow = turn; lock.unlock()
     }
 
     // MARK: - Contacts (render thread)

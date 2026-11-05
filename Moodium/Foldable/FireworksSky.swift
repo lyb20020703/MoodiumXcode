@@ -194,42 +194,20 @@ struct TabletopSky: View {
     let world: MoodWorld
     let fold: TabletopFold
 
-    /// How far below the fold the sky keeps fading out over the stage.
-    private let feather: CGFloat = 70
-
     var body: some View {
-        // Night at the top, the world's own colours lower down, then a long fade across the
-        // fold into the stage's sky (drawn under this), so the two halves read as one scene.
-        let height = fold.band.maxY + feather
-        // fully opaque down to where the stage starts drawing (the top of the band), so nothing
-        // dark shows through; the fade happens only over the stage's own sky
-        let fadeStart = fold.band.minY / height
-        ZStack(alignment: .topLeading) {
-            Color.clear.overlay {
-                ZStack {
-                    Palette.ink
-                    if let image = Res.image(world.backdrop) {
-                        Image(uiImage: image).resizable().scaledToFill().blur(radius: 3)
-                    }
-                    LinearGradient(stops: [.init(color: Palette.ink.opacity(0.95), location: 0),
-                                           .init(color: Palette.ink.opacity(0.7), location: 0.45),
-                                           .init(color: Palette.ink.opacity(0.12), location: 1)],
-                                   startPoint: .top, endPoint: .bottom)
-                    TwinkleField(count: 30, color: .white.opacity(0.8))
-                }
-            }
-            .clipped()
-            .frame(width: fold.top.width, height: height)
-            .mask {
-                LinearGradient(stops: [.init(color: .black, location: 0),
-                                       .init(color: .black, location: fadeStart),
-                                       .init(color: .black.opacity(0.5), location: fadeStart + (1 - fadeStart) * 0.45),
-                                       .init(color: .clear, location: 1)],
-                               startPoint: .top, endPoint: .bottom)
-            }
-            .offset(x: fold.top.minX, y: fold.top.minY)
+        // Over the panorama sky above the fold: dusk deepening toward the top edge, with a few
+        // stars, so fireworks glow. It fades out well above the fold, so the sky stays one picture.
+        let h = fold.top.height
+        ZStack {
+            LinearGradient(stops: [.init(color: Palette.ink.opacity(world == .candy ? 0.5 : 0.42), location: 0),
+                                   .init(color: Palette.ink.opacity(world == .candy ? 0.22 : 0.16), location: 0.35),
+                                   .init(color: .clear, location: 0.72)],
+                           startPoint: .top, endPoint: .bottom)
+            TwinkleField(count: 22, color: .white.opacity(0.75))
+                .mask(LinearGradient(colors: [.black, .black.opacity(0.6), .clear], startPoint: .top, endPoint: .bottom))
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .frame(width: fold.top.width, height: h)
+        .position(x: fold.top.midX, y: fold.top.midY)
         .allowsHitTesting(false)
     }
 }
