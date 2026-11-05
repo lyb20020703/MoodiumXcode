@@ -154,6 +154,10 @@ struct TabletopFold: Equatable {
     /// 0…1, how far the fireworks may climb (more open → higher).
     var reach: Double
 
+    /// Where the 3D stage draws: the bottom half plus the fold band, so its own sky fills the
+    /// band and no dark gap shows (the controls still stay in `bottom`).
+    var stage: CGRect { CGRect(x: bottom.minX, y: band.minY, width: bottom.width, height: bottom.maxY - band.minY) }
+
     /// Whenever the fold crosses the screen, flat or half open.
     static func detect(crease: Crease?, hinge: HingeState) -> TabletopFold? {
         guard let crease else { return nil }

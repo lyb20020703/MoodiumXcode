@@ -32,22 +32,24 @@ struct SqueezeView: View {
             let fold = TabletopFold.detect(crease: crease, hinge: hinge)
             let full = CGRect(origin: .zero, size: geo.size)
             let stageRect = fold?.bottom ?? full
+            let canvasRect = fold?.stage ?? full
             let skyRect = fold?.top ?? full
             // the energy ring floats above the pillow (on the bottom half when folded, so the sky stays clear)
             let ringCenter = CGPoint(x: stageRect.midX, y: stageRect.minY + stageRect.height * (fold == nil ? 0.19 : 0.17))
             let ringSize = fold == nil ? full.size : CGSize(width: stageRect.width, height: stageRect.height * 0.8)
             ZStack {
+                SqueezeCanvas(director: director)
+                    .gesture(touchGesture(width: canvasRect.width))
+                    .simultaneousGesture(SpatialTapGesture(coordinateSpace: .local).onEnded { director.tap(at: $0.location) })
+                    .frame(width: canvasRect.width, height: canvasRect.height)
+                    .position(x: canvasRect.midX, y: canvasRect.midY)
+
+                // the sky above the fold, fading into the stage's own sky across it
                 if let fold { TabletopSky(world: world, fold: fold) }
 
-                SqueezeCanvas(director: director)
-                    .gesture(touchGesture(width: stageRect.width))
-                    .simultaneousGesture(SpatialTapGesture(coordinateSpace: .local).onEnded { director.tap(at: $0.location) })
-                    .frame(width: stageRect.width, height: stageRect.height)
-                    .position(x: stageRect.midX, y: stageRect.midY)
-
                 ModeAtmosphere(director: director, world: world)
-                    .frame(width: stageRect.width, height: stageRect.height)
-                    .position(x: stageRect.midX, y: stageRect.midY)
+                    .frame(width: canvasRect.width, height: canvasRect.height)
+                    .position(x: canvasRect.midX, y: canvasRect.midY)
 
                 if fold != nil { FireworksLayer(show: fireworks) }
 
@@ -192,7 +194,7 @@ struct SqueezeView: View {
     /// Sends a fireworks rocket up from the stage into the sky for each squeeze, gift and the finale.
     private func launchFireworks(_ cue: SqueezeDirector.SkyCue) {
         guard let fold = currentFold else { return }
-        let stage = fold.bottom
+        let stage = fold.stage
         func origin(_ p: CGPoint?) -> CGPoint {
             guard let p else { return CGPoint(x: stage.midX, y: stage.minY + stage.height * 0.4) }
             return CGPoint(x: stage.minX + p.x, y: stage.minY + p.y)

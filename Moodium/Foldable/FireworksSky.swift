@@ -194,7 +194,16 @@ struct TabletopSky: View {
     let world: MoodWorld
     let fold: TabletopFold
 
+    /// How far below the fold the sky keeps fading out over the stage.
+    private let feather: CGFloat = 70
+
     var body: some View {
+        // Night at the top, the world's own colours lower down, then a long fade across the
+        // fold into the stage's sky (drawn under this), so the two halves read as one scene.
+        let height = fold.band.maxY + feather
+        // fully opaque down to where the stage starts drawing (the top of the band), so nothing
+        // dark shows through; the fade happens only over the stage's own sky
+        let fadeStart = fold.band.minY / height
         ZStack(alignment: .topLeading) {
             Color.clear.overlay {
                 ZStack {
@@ -202,18 +211,23 @@ struct TabletopSky: View {
                     if let image = Res.image(world.backdrop) {
                         Image(uiImage: image).resizable().scaledToFill().blur(radius: 3)
                     }
-                    LinearGradient(colors: [Palette.ink.opacity(0.97), Palette.ink.opacity(0.78), Palette.ink.opacity(0.35)],
+                    LinearGradient(stops: [.init(color: Palette.ink.opacity(0.95), location: 0),
+                                           .init(color: Palette.ink.opacity(0.7), location: 0.45),
+                                           .init(color: Palette.ink.opacity(0.12), location: 1)],
                                    startPoint: .top, endPoint: .bottom)
                     TwinkleField(count: 30, color: .white.opacity(0.8))
                 }
             }
             .clipped()
-            .frame(width: fold.top.width, height: fold.top.height)
+            .frame(width: fold.top.width, height: height)
+            .mask {
+                LinearGradient(stops: [.init(color: .black, location: 0),
+                                       .init(color: .black, location: fadeStart),
+                                       .init(color: .black.opacity(0.5), location: fadeStart + (1 - fadeStart) * 0.45),
+                                       .init(color: .clear, location: 1)],
+                               startPoint: .top, endPoint: .bottom)
+            }
             .offset(x: fold.top.minX, y: fold.top.minY)
-
-            LinearGradient(colors: [.clear, .black.opacity(0.45), .clear], startPoint: .top, endPoint: .bottom)
-                .frame(width: fold.band.width, height: fold.band.height + 20)
-                .offset(x: fold.band.minX, y: fold.band.minY - 10)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .allowsHitTesting(false)
