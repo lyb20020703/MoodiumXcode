@@ -103,5 +103,6 @@
 - **桌面姿态放烟花**：Duo 内屏半折、折痕横在中间（像小笔记本一样立在桌上）时，捏捏世界一分为二：下半屏是枕头、Moodi、能量环和所有按钮，上半屏变成夜空。每次挤压，火花从 Moodi 嘴边升起、越过折痕，在上半屏炸开；长出礼物时连放三发，救出 Moodi 时放一整轮（糖果世界有爱心烟花）。开合角度越大，烟花飞得越高。展平、合上或在普通 iPhone 上，一切和原来一样。
 - **代码位置**：`Moodium/Foldable/Fold.swift`（折叠状态与上下两半的计算）、`Moodium/Foldable/FireworksSky.swift`（烟花与上半屏天空）；`SqueezeView` 按"舞台区 / 天空区"两个矩形摆放内容。
 - **编译要求**：折叠角度接口（`onHingeChange`、`reservedRegions(kind: .division)`）只在 iOS 27.1 SDK 里有，需要用 **Xcode 27.1** 编译。工程只在 iOS 27.1 及以上 SDK 下打开 `MOODIUM_DUO` 编译开关，用旧版 Xcode 编译时这部分代码不参与，应用照常运行。
-- **竖屏**：展开的 Duo 竖着拿时，首页和心情盘改为上下排列。
+- **屏幕方向（避免被缩成小窗）**：只声明横屏的应用在 Duo 内屏竖着拿或半折时，会被系统缩成屏幕中间的一个横向小窗。所以 Info.plist 同时列出横屏和竖屏，再由 `Moodium/App/OrientationPolicy.swift` 在运行时决定：普通 iPhone 和 Duo 外屏这种细长屏幕仍然只能横屏，Duo 内屏这种接近方形的屏幕可以竖屏。开合 Duo（应用换到另一块屏幕）时会重新判断。
+- **竖屏**：展开的 Duo 竖着拿时，首页和心情盘改为上下排列；半折时走上面的"桌面姿态"布局。
 - **边距**：所有页面全屏绘制，边缘按钮按机型统一留边（`Moodium/Design/ScreenMargins.swift`），刚好避开灵动岛和圆角。

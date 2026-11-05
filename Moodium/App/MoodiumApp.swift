@@ -3,6 +3,7 @@ import AVFoundation
 
 @main
 struct MoodiumApp: App {
+    @UIApplicationDelegateAdaptor(MoodiumAppDelegate.self) private var appDelegate
     @StateObject private var app = AppModel()
 
     init() {
@@ -18,6 +19,7 @@ struct MoodiumApp: App {
                 .preferredColorScheme(.dark)
                 .statusBarHidden(true)
                 .persistentSystemOverlays(.hidden)
+                .modifier(OrientationPolicyRefresher())
         }
     }
 }
